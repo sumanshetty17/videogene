@@ -1,0 +1,2608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reelmind — Turn any text into an explainer video</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --bg:#0E0E10;
+    --bg-raised:#17171A;
+    --paper:#F2ECDD;
+    --paper-dim:#E7DFC9;
+    --ink:#1B1B1D;
+    --line:#38383C;
+    --line-soft:#2A2A2E;
+    --red:#E8432F;
+    --teal:#4FD1C5;
+    --text-dim:#9A9A9E;
+    --text:#EDEDEE;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Source Serif 4', serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3, .display{
+    font-family:'Bebas Neue', sans-serif;
+    letter-spacing:0.02em;
+    font-weight:400;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  a{color:inherit;}
+
+  /* ---- layout shell ---- */
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px;}
+  header.top{
+    position:sticky;top:0;z-index:20;
+    background:rgba(14,14,16,0.9);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line-soft);
+  }
+  .top-inner{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 28px;max-width:1080px;margin:0 auto;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--red);
+    box-shadow:0 0 0 3px rgba(232,67,47,0.18);}
+  .brand span{font-family:'Bebas Neue';font-size:24px;letter-spacing:0.04em;}
+  nav.steps{display:flex;gap:22px;font-family:'JetBrains Mono';font-size:12px;color:var(--text-dim);}
+  nav.steps .on{color:var(--teal);}
+
+  /* ---- hero ---- */
+  .hero{padding:72px 0 48px;}
+  .eyebrow{
+    font-family:'JetBrains Mono';font-size:12px;color:var(--red);
+    letter-spacing:0.14em;text-transform:uppercase;margin-bottom:18px;
+  }
+  .hero h1{font-size:clamp(44px,7vw,84px);line-height:0.95;margin:0 0 20px;max-width:780px;}
+  .hero h1 em{font-style:normal;color:var(--teal);}
+  .hero p{font-size:18px;line-height:1.6;color:var(--text-dim);max-width:560px;margin:0 0 8px;}
+
+  section{padding:56px 0;border-top:1px solid var(--line-soft);}
+  .section-head{display:flex;align-items:baseline;gap:14px;margin-bottom:28px;}
+  .section-num{font-family:'JetBrains Mono';color:var(--red);font-size:13px;}
+  .section-head h2{font-size:34px;margin:0;}
+
+  /* ---- upload zone ---- */
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:var(--radius);
+    padding:48px 28px;text-align:center;
+    cursor:pointer;transition:border-color .15s, background .15s;
+  }
+  .dropzone:hover, .dropzone.drag{border-color:var(--teal);background:rgba(79,209,197,0.04);}
+  .dropzone .big{font-family:'Bebas Neue';font-size:26px;margin-bottom:6px;}
+  .dropzone .small{color:var(--text-dim);font-size:14px;}
+  input[type=file]{display:none;}
+
+  textarea#pastedText{
+    width:100%;min-height:110px;margin-top:18px;
+    background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--radius);
+    color:var(--text);font-family:'Source Serif 4';font-size:15px;padding:14px;resize:vertical;
+  }
+  textarea#pastedText:focus{outline:none;border-color:var(--teal);}
+
+  .file-chip{
+    display:inline-flex;align-items:center;gap:10px;margin-top:14px;
+    background:var(--bg-raised);border:1px solid var(--line);padding:8px 14px;
+    border-radius:var(--radius);font-family:'JetBrains Mono';font-size:13px;
+  }
+  .file-chip button{background:none;border:none;color:var(--red);cursor:pointer;font-family:inherit;}
+
+  .btn{
+    font-family:'JetBrains Mono';font-size:13px;letter-spacing:0.04em;
+    text-transform:uppercase;border:1px solid var(--line);background:transparent;
+    color:var(--text);padding:13px 22px;border-radius:var(--radius);cursor:pointer;
+    transition:all .15s;
+  }
+  .btn:hover:not(:disabled){border-color:var(--text);}
+  .btn:disabled{opacity:0.35;cursor:not-allowed;}
+  .btn-primary{background:var(--red);border-color:var(--red);color:#0E0E10;font-weight:700;}
+  .btn-primary:hover:not(:disabled){background:#ff5540;}
+  .btn-teal{background:var(--teal);border-color:var(--teal);color:#0E0E10;font-weight:700;}
+  .btn-teal:hover:not(:disabled){background:#6fe0d5;}
+  .actions{margin-top:20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .status{font-family:'JetBrains Mono';font-size:13px;color:var(--text-dim);}
+
+  /* ---- storyboard reel ---- */
+  #storyboardSection{display:none;}
+  .reel-title{font-family:'JetBrains Mono';font-size:13px;color:var(--text-dim);margin-bottom:18px;}
+  .reel{
+    display:flex;gap:18px;overflow-x:auto;padding:22px 4px 10px;
+    scrollbar-width:thin;
+  }
+  .card{
+    flex:0 0 220px;background:var(--paper);color:var(--ink);border-radius:3px;
+    position:relative;padding-top:14px;box-shadow:0 10px 24px rgba(0,0,0,0.35);
+  }
+  .sprocket-row{display:flex;justify-content:space-between;padding:0 10px 10px;}
+  .sprocket{width:7px;height:7px;border-radius:50%;background:var(--bg);}
+  .card .scene-tag{
+    font-family:'JetBrains Mono';font-size:10px;letter-spacing:0.08em;
+    text-transform:uppercase;color:var(--red);padding:0 14px;margin-bottom:6px;
+  }
+  .card canvas{width:100%;display:block;background:#111;height:124px;}
+  .card .cap{padding:12px 14px 16px;}
+  .card .cap h3{font-size:19px;margin:0 0 6px;font-family:'Bebas Neue';}
+  .card .cap p{font-size:13px;line-height:1.45;margin:0;color:#4a4a44;}
+
+  /* ---- studio ---- */
+  #studioSection{display:none;}
+  .studio-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:36px;}
+  @media(max-width:820px){.studio-grid{grid-template-columns:1fr;}}
+  .stage{
+    background:#000;border-radius:3px;overflow:hidden;position:relative;
+    box-shadow:0 20px 40px rgba(0,0,0,.5);
+  }
+  .stage canvas{width:100%;display:block;}
+  .stage .rec{
+    position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:6px;
+    font-family:'JetBrains Mono';font-size:11px;color:#fff;
+  }
+  .stage .rec .r-dot{width:8px;height:8px;border-radius:50%;background:var(--red);}
+  .stage .rec .r-dot.live{animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+  .stage .cc{
+    position:absolute;bottom:0;left:0;right:0;padding:14px 16px;
+    background:linear-gradient(to top, rgba(0,0,0,.85), transparent);
+    font-family:'Source Serif 4';font-size:14px;color:#fff;min-height:22px;
+  }
+
+  .panel{background:var(--bg-raised);border:1px solid var(--line-soft);border-radius:3px;padding:22px;}
+  .panel h3{font-size:22px;margin:0 0 4px;}
+  .panel .hint{color:var(--text-dim);font-size:13px;margin-bottom:16px;}
+  .voice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+  .voice-opt{
+    border:1px solid var(--line);border-radius:var(--radius);padding:12px 8px;text-align:center;
+    cursor:pointer;font-family:'JetBrains Mono';font-size:12px;background:var(--bg);
+  }
+  .voice-opt:hover{border-color:var(--text-dim);}
+  .voice-opt.sel{border-color:var(--teal);color:var(--teal);background:rgba(79,209,197,0.06);}
+  .voice-opt .vlabel{display:block;font-size:22px;margin-bottom:4px;font-family:'Bebas Neue';color:var(--text);}
+  .voice-opt.sel .vlabel{color:var(--teal);}
+
+  .key-row{display:flex;gap:8px;margin-bottom:10px;}
+  .key-row input{
+    flex:1;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);
+    color:var(--text);font-family:'JetBrains Mono';font-size:13px;padding:10px 12px;
+  }
+  .key-row input:focus{outline:none;border-color:var(--teal);}
+  .key-status{font-family:'JetBrains Mono';font-size:12px;color:var(--text-dim);margin-bottom:16px;}
+  .key-status.ok{color:var(--teal);}
+  .key-status.err{color:var(--red);}
+  .voice-list{max-height:170px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .voice-row{
+    display:flex;align-items:center;justify-content:space-between;
+    border:1px solid var(--line);border-radius:var(--radius);padding:9px 12px;
+    cursor:pointer;font-family:'JetBrains Mono';font-size:13px;background:var(--bg);
+  }
+  .voice-row:hover{border-color:var(--text-dim);}
+  .voice-row.sel{border-color:var(--teal);color:var(--teal);background:rgba(79,209,197,0.06);}
+  .voice-row button{
+    background:none;border:1px solid var(--line);color:var(--text-dim);border-radius:var(--radius);
+    font-family:'JetBrains Mono';font-size:11px;padding:4px 8px;cursor:pointer;
+  }
+  .robot-toggle{display:flex;align-items:center;gap:8px;margin-bottom:20px;font-family:'JetBrains Mono';font-size:13px;color:var(--text-dim);}
+
+  .progress-track{height:4px;background:var(--line-soft);border-radius:2px;margin:16px 0;overflow:hidden;}
+  .progress-fill{height:100%;width:0%;background:var(--teal);transition:width .2s;}
+
+  #downloadLink{display:none;}
+
+  footer{padding:60px 0 90px;border-top:1px solid var(--line-soft);}
+  footer h2{font-size:26px;margin:0 0 14px;}
+  footer p{color:var(--text-dim);font-size:14.5px;line-height:1.7;max-width:680px;}
+  footer .arch{font-family:'JetBrains Mono';font-size:12.5px;color:var(--text-dim);line-height:2;margin-top:10px;}
+  footer .arch b{color:var(--text);}
+</style>
+<script src="https://js.puter.com/v2/"></script>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand"><span class="dot"></span><span>REELMIND</span></div>
+    <nav class="steps">
+      <span id="nav1" class="on">01 · SOURCE</span>
+      <span id="nav2">02 · STORYBOARD</span>
+      <span id="nav3">03 · STUDIO</span>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="eyebrow">Text / PDF → Narrated Explainer Video</div>
+    <h1>Feed it a document.<br>Get back a <em>narrated film.</em></h1>
+    <p>Upload text, a PDF, or paste a concept. Reelmind reads it, storyboards it into scenes, animates the ideas, and narrates it in the voice you choose — then hands you a video file.</p>
+  </section>
+
+  <!-- STEP 1: SOURCE -->
+  <section id="uploadSection">
+    <div class="section-head"><span class="section-num">00</span><h2>Connect your proxy</h2></div>
+    <div class="key-row" style="max-width:640px;">
+      <input type="text" id="apiKeyInput" placeholder="Paste your Worker URL (https://…workers.dev)">
+      <button class="btn" id="connectBtn">Connect</button>
+    </div>
+    <div class="key-status" id="keyStatus">Not connected — analysis and video export are disabled until you connect.</div>
+
+    <div class="section-head" style="margin-top:36px;"><span class="section-num">01</span><h2>Give it something to explain</h2></div>
+
+    <div class="dropzone" id="dropzone">
+      <div class="big">Drop a .txt or .pdf here</div>
+      <div class="small">or click to browse — or just paste text below</div>
+      <input type="file" id="fileInput" accept=".txt,.pdf">
+    </div>
+    <div id="fileChipWrap"></div>
+
+    <textarea id="pastedText" placeholder="…or paste an article, a concept, lecture notes, anything you want turned into an explainer video."></textarea>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="analyzeBtn" disabled>Analyze &amp; Build Storyboard</button>
+      <span class="status" id="analyzeStatus"></span>
+    </div>
+  </section>
+
+  <!-- STEP 2: STORYBOARD -->
+  <section id="storyboardSection">
+    <div class="section-head"><span class="section-num">02</span><h2 id="sbTitle">Storyboard</h2></div>
+    <div class="reel-title">Reelmind read your source and split it into scenes — each one gets its own visual + narration line.</div>
+    <div class="reel-title" id="qaSummary" style="color:#63636A;"></div>
+    <div class="reel" id="reel"></div>
+    <div class="actions">
+      <button class="btn btn-teal" id="toStudioBtn">Continue to Studio →</button>
+    </div>
+  </section>
+
+  <!-- STEP 3: STUDIO -->
+  <section id="studioSection">
+    <div class="section-head"><span class="section-num">03</span><h2>Studio</h2></div>
+    <div class="studio-grid">
+      <div>
+        <div class="stage">
+          <canvas id="stageCanvas" width="960" height="540"></canvas>
+          <div class="rec"><span class="r-dot" id="recDot"></span><span id="recLabel">PREVIEW</span></div>
+          <div class="cc" id="caption"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="previewBtn">▶ Preview scene-by-scene</button>
+        </div>
+        <div id="styleFrameStrip" style="display:none; margin-top:16px;">
+          <div class="hint" style="margin-bottom:8px;">Style check — one representative frame per visual type used in this lesson, so you can sanity-check the look before rendering the full video:</div>
+          <div id="styleFrameThumbs" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Narration voice</h3>
+        <div class="hint">Real narration audio, fetched through your proxy — connected at the top of the page.</div>
+        <div class="voice-list" id="voiceList"></div>
+        <label class="robot-toggle"><input type="checkbox" id="robotToggle"> Apply robotic voice effect (ring-modulated, works on any voice above)</label>
+        <label class="robot-toggle"><input type="checkbox" id="captionsToggle" checked> Show captions (baked into the exported video)</label>
+        <label class="robot-toggle"><input type="checkbox" id="aiCharacterArtToggle"> Generate real AI character art for story scenes (experimental — slower, uses image-generation quota, falls back to simple vector characters automatically if generation fails)</label>
+
+        <h3>Export</h3>
+        <div class="hint">Fetches narration audio per scene, then records it together with the animation into one file — audio is guaranteed to be present.</div>
+        <button class="btn btn-primary" id="renderBtn" style="width:100%;" disabled>Generate Video</button>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="status" id="renderStatus"></div>
+        <div id="qaPanel" style="display:none;margin-top:12px;border:1px solid var(--line-soft);border-radius:2px;padding:10px 12px;font-family:'JetBrains Mono';font-size:11.5px;"></div>
+        <a id="downloadLink" class="btn btn-teal" style="display:none;width:100%;text-align:center;margin-top:10px;text-decoration:none;">⬇ Download Video</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <h2>How this works</h2>
+    <p>This runs entirely on free tiers — no card on file anywhere. Your Worker proxies the analysis call and serves this page over https:// (required, since the narration engine refuses to run from a local file). Everything else — rendering, audio decoding, and video export — happens live in this browser tab.</p>
+    <div class="arch">
+      <div><b>Content analysis</b> — your source text is sent through your Worker to Cloudflare Workers AI, which returns a full scene-by-scene lesson (narration + visual kind + real named entities) as JSON, classified using an explicit animation grammar so each concept gets the visual that actually explains it.</div>
+      <div><b>Animation</b> — a renderer registry maps each scene's visual kind (physical mechanisms, circuits, waveforms, graphs, exploded/cross-section views, causal chains, concept maps, comparisons, timelines, equations) to a hand-coded canvas renderer, with camera moves and captions drawn directly onto the canvas.</div>
+      <div><b>Narration</b> — real generated audio, fetched via Puter.js (a free, unlimited, no-signup TTS gateway) for each scene, using the voice you pick.</div>
+      <div><b>Export</b> — the fetched audio buffer and the canvas animation (captions included) are routed into the same MediaRecorder via the Web Audio API, so the download always has narration baked in — no screen/tab-audio permission step involved. You can also regenerate a single scene without rebuilding the whole lesson.</div>
+      <div style="margin-top:10px;color:var(--text-dim)">For a production version at scale: move rendering to a server-side pipeline (e.g. Remotion/FFmpeg) with a job queue for longer documents, add Three.js/GLB for real 3D device models, and use object storage + a CDN for hosting finished videos — all of which move this beyond a single free Worker.</div>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* ---------------- state ---------------- */
+let sourceText = "";
+let scenes = [];              // [{id,title,narration,visual,labels,value}]
+let proxyBase = "";
+let elevenVoices = [];       // unused, kept for compatibility
+let audioCtx = null;         // created lazily (needs a user gesture)
+// Content-addressed audio cache: keyed by a hash of (narration text + voice
+// settings), NOT by scene index. A blunt "clear the whole cache on new
+// analyze" (the previous fix) only closed the staleness hole at two known
+// trigger points (full re-analyze, single-scene regenerate). Hashing the
+// actual content closes it everywhere, including a case those two misses:
+// changing the narration voice AFTER audio was already fetched for a
+// scene. If the content that produced a cached buffer doesn't match what's
+// current, the hash simply won't match, and fresh audio gets fetched —
+// correctness by construction rather than by remembering every place that
+// needs a manual cache-bust.
+const sceneAudioCache = {};  // audioHash -> {buffer, duration}
+
+async function audioHashFor(scene){
+  const voice = selectedVoiceId ? `${selectedVoiceId.opts.voice}|${selectedVoiceId.opts.engine}|${selectedVoiceId.opts.language}` : "no-voice";
+  const raw = `${scene.narration || ""}::${voice}`;
+  const bytes = new TextEncoder().encode(raw);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('').slice(0, 24);
+}
+
+/* Narration voices — powered by Puter.js (js.puter.com), which is free,
+   unlimited, and needs no API key or sign-up. Returns a real audio file
+   we can fetch + decode, unlike the browser's own speechSynthesis (which
+   plays at the OS level and can't be captured into a recording). */
+const VOICE_OPTIONS = [
+  { name: "Joanna (US, neural)",  opts: { voice: "Joanna",  engine: "neural", language: "en-US" } },
+  { name: "Matthew (US, neural)", opts: { voice: "Matthew", engine: "neural", language: "en-US" } },
+  { name: "Amy (UK, neural)",     opts: { voice: "Amy",     engine: "neural", language: "en-GB" } },
+  { name: "Brian (UK, neural)",   opts: { voice: "Brian",   engine: "neural", language: "en-GB" } },
+  { name: "Ivy (US, neural)",     opts: { voice: "Ivy",     engine: "neural", language: "en-US" } },
+  { name: "Kevin (US, neural)",   opts: { voice: "Kevin",   engine: "neural", language: "en-US" } }
+];
+let availableVoices = VOICE_OPTIONS;
+let selectedVoiceId = null;  // holds one entry from VOICE_OPTIONS
+let roboticEffect = false;
+let showCaptions = true;     // user-toggleable; captions are drawn onto the canvas itself (see drawCaptionBand)
+let useAICharacterArt = false; // user-toggleable; when on, Story Mode tries real generated character portraits before falling back to vector figures
+// audioCtx / sceneAudioCache declared above (used for decoding + caching fetched narration audio)
+
+/* ---------------- upload handling ---------------- */
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const pastedText = document.getElementById('pastedText');
+const fileChipWrap = document.getElementById('fileChipWrap');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const analyzeStatus = document.getElementById('analyzeStatus');
+
+dropzone.addEventListener('click', ()=>fileInput.click());
+['dragover'].forEach(ev=>dropzone.addEventListener(ev, e=>{e.preventDefault();dropzone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev, e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+dropzone.addEventListener('drop', e=>{ if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+pastedText.addEventListener('input', refreshAnalyzeState);
+
+async function handleFile(file){
+  fileChipWrap.innerHTML = `<div class="file-chip">📄 ${file.name} <button onclick="clearFile()">✕</button></div>`;
+  if(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')){
+    sourceText = await extractPdfText(file);
+  } else {
+    sourceText = await file.text();
+  }
+  pastedText.value = sourceText.slice(0, 8000);
+  refreshAnalyzeState();
+}
+function clearFile(){ sourceText=""; fileChipWrap.innerHTML=""; fileInput.value=""; refreshAnalyzeState(); }
+
+async function extractPdfText(file){
+  const buf = await file.arrayBuffer();
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  let text = "";
+  const pages = Math.min(pdf.numPages, 25);
+  for(let i=1;i<=pages;i++){
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(it=>it.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+function refreshAnalyzeState(){
+  const text = (pastedText.value || sourceText || '').trim();
+  analyzeBtn.disabled = text.length < 20 || !proxyBase;
+}
+
+/* ---------------- analysis via Claude ---------------- */
+analyzeBtn.addEventListener('click', analyzeAndStoryboard);
+
+async function analyzeAndStoryboard(){
+  const text = pastedText.value.trim().slice(0, 6000);
+  analyzeBtn.disabled = true;
+  analyzeStatus.textContent = "Reading your source…";
+
+  const systemPrompt = `You are the TEACHING DIRECTOR and VISUAL DIRECTOR of an educational video engine. Your job is to TEACH the source material like a good human teacher would — never simply read it aloud. Read the source, understand it, and produce a JSON object ONLY (no markdown fences, no prose) with this exact shape:
+{
+ "title": "short punchy title for the lesson",
+ "scenes": [
+   {
+     "type": "one of: hook | eli5 | definition | components | exploded_view | step | example | deep_dive | application | misconception | recap",
+     "title": "3-6 word scene title",
+     "narration": "teacher-style spoken narration for this scene — see narration rules below",
+     "visual": {
+       "kind": "one of: dc_motor | photovoltaic_cell | circuit | waveform | graph | mechanism_animation | process | exploded_view | cross_section | concept_map | comparison | timeline | mathematical | particle_system | story_scene",
+       ... plus ONLY the fields relevant to that kind, listed below ...
+     }
+   }
+ ]
+}
+
+LESSON STRUCTURE — build a real lesson, not a flat list of facts. Use as many of these stages as the source material genuinely supports (typically 6-14 scenes for a substantial topic, fewer for a small one — never pad to hit a number):
+1. hook — why this matters, in one or two engaging sentences.
+2. eli5 — a simple, technically-truthful analogy or intuition (e.g. "imagine tiny balls moving through a pipe" for current), then a bridge back to the correct technical term. Never sacrifice accuracy for simplicity.
+3. definition — the correct formal definition, using the source's own terminology.
+4. components — name the real parts/entities involved.
+5. exploded_view — if the topic is a physical system with real internal parts, separate and explain them.
+6. step — one scene PER major step of a process/mechanism (use several "step" scenes in sequence for a multi-stage mechanism, each explaining one stage and what causes it).
+7. example — a concrete worked example that actually demonstrates the concept (numbers, a scenario, a real case) — never just restate the definition.
+8. deep_dive — equations, relationships, assumptions, or nuance beyond the basic explanation, only if the source supports it.
+9. application — where and why this is actually used in the real world.
+10. misconception — a common confusion worth clarifying, only if genuinely relevant.
+11. recap — connect the pieces back together and reinforce the main idea. Always include this as the final scene for any substantial lesson.
+
+NARRATION RULES:
+- Sound like a teacher explaining, not a document being read: explain WHAT, WHY, and HOW, using connecting sentences between ideas.
+- Preserve the source's real terminology, definitions, values, and formulas exactly.
+- Do not invent facts, numbers, or equations the source doesn't support.
+- Do not pad narration with filler, repetition, or empty transitions just to make the video longer — length must come from genuinely teaching more, not from wasted words.
+
+VISUAL FIELDS per kind (only include the ones for the kind you chose, using REAL entities/terms from the source, never generic placeholders):
+- dc_motor: { "magnet_pole_left": "N", "magnet_pole_right": "S", "coil_label": "real coil/armature name", "current_direction": "cw or ccw" }
+- photovoltaic_cell: { "source_label": "e.g. Sunlight", "cell_label": "real cell name", "carrier_label": "e.g. Electrons", "circuit_label": "real circuit/load name", "output_label": "real output, e.g. DC Current" }
+- circuit: { "source_label": "real voltage source name", "component_label": "real component name", "component_type": "resistor, capacitor, diode, or battery — pick the real one described", "show_curve": true/false, "curve_type": "charge or discharge" }
+- waveform: { "label": "real signal name", "wave_type": "sine, square, or pulse", "x_label": "real x-axis meaning" }
+- graph: { "curve_type": "linear, exponential_rise, exponential_decay, or step", "x_label": "real x-axis label", "y_label": "real y-axis label", "highlight_label": "what the curve shows", "annotations": [{"type":"vertical","x":0.5,"label":"real feature name"}] } — annotations are optional, only include when a specific real point/feature is worth marking.
+- mechanism_animation: { "causalChain": ["4-10 real named stages in strict cause-then-effect order, e.g. sunlight, photovoltaic_conversion, dc_generation, motor_input, torque, shaft_rotation, wheel_motion"] } — use this whenever the scene explains a real chain of cause and effect (energy/signal/force moving through a system) rather than a simple flat list — order matters and each stage must genuinely cause the next.
+- process: { "steps": ["3-6 real named steps/stages from the source, in order"] } — use for a sequence without a strict causal chain (e.g. a procedure or checklist).
+- exploded_view: { "parts": ["3-5 real named components of the physical system"] } — use when parts need to visually separate in space to show assembly.
+- cross_section: { "parts": ["3-5 real named internal layers/components, ordered from outermost to innermost"] } — use when the important detail is HIDDEN inside an object and needs to be revealed layer by layer, distinct from exploded_view.
+- concept_map: { "center_label": "real central idea", "related_labels": ["3-6 real related terms"] }
+- comparison: { "left_entity": "real name", "left_detail": "3-6 word real detail", "right_entity": "real name", "right_detail": "3-6 word real detail" }
+- timeline: { "stages": ["3-6 real chronological stages/events from the source, in order"] }
+- mathematical: { "equation": "the real equation, e.g. V = I * R", "variables": [{"symbol":"V","meaning":"real meaning"}], "example_line": "one real short numeric example, only if the source gives one" }
+- particle_system: { "from_label": "real starting point", "to_label": "real destination", "particle_label": "what is flowing" } — last resort only, when no better-fitting kind applies.
+- story_scene: use ONLY for genuinely narrative content — a fictional or historical scenario with characters, actions, conflict, dialogue, or events — never for technical/conceptual material. Schema: { "environment": "free-text setting description including a location and a time-of-day word, e.g. 'village square, evening' or 'workshop, daytime'", "beats": [ ... 4-8 beat objects ... ] }. Each beat is ONE discrete staged moment — a real shot, like in a screenplay — the visual hard-cuts between beats rather than smoothly blending:
+  { "camera": "one of: wide | medium | close_up | push_in | pull_out | pan_left | pan_right | tracking — wide/medium/close_up are static framings (wide establishes the whole scene, medium frames the acting character(s) at normal distance, close_up frames tightly on a reaction/key line/important detail); push_in/pull_out/pan_left/pan_right/tracking are MOVING camera shots that animate across the beat — tracking follows whichever character is walking/running/approaching/retreating. Vary this across a scene's beats like a real shot list; don't leave every beat the same shot type, and use a moving shot at least once per scene when there's real motion to follow",
+    "environmentEvent": "optional short phrase containing a keyword: cloud/storm, fire/flame, flash/impact/explosion, glow/light, shake/vibrate, wind/breeze, rain, smoke/dust, or crowd — omit or leave empty if nothing special is happening",
+    "props": "optional array of objects/machines/devices actually present and relevant to this beat: [ { \"id\": \"stable_snake_case_id, reused across beats/scenes if the same object recurs\", \"label\": \"Display Name\", \"kind\": \"one of: door | machine | light | tool | box | vehicle\", \"state\": \"one of: idle | open | closed | on | off | broken | repaired | moving\", \"position\": \"one of: left | center_left | center | center_right | right — avoid the same slot a character is standing in\" } ] — props should visibly change state across beats when the story says so (a machine goes from broken to repaired to on, a door goes from closed to open) rather than only characters ever doing anything",
+    "characters": [ { "id": "stable_snake_case_id — MUST be the exact same id every single time this character appears anywhere in the lesson, in every scene, or their visual identity breaks", "name": "Display Name", "description": "a short, concrete visual description of this character's appearance — hair, clothing, notable features, e.g. 'young woman, short black hair, blue jacket, brown trousers' — written IDENTICALLY every single time this id appears anywhere in the lesson, since it drives generated character art and any wording drift makes them look like a different person", "action": "one of (locomotion): idle | walk | run | approach | retreat | turn | crouch | jump | stumble — (gesture): point | wave | reach | grab | push | pull | lift | throw | hold | hand_over_object — (head/face): look | look_at | look_away | nod | shake_head | react — (interaction): use | pick_up | place | drop | inspect | repair | open | close | activate | deactivate | carry — (dialogue): talk", "expression": "one of: neutral | happy | concerned | worried | urgent | determined | surprised", "position": "one of: left | center_left | center | center_right | right" } ] }. Only include characters/props who are actually active/visible in that specific beat.
+
+ACTION DENSITY — this is the single most important rule for story_scene, because a video where narration describes big events while characters stand still reads as a broken slideshow, not a story. For EVERY sentence in the narration, ask "what is physically happening on screen at this exact moment?" and make sure some beat captures it:
+  - A sentence describing multiple sequential events ("the monster emerged from the forest, and the villagers noticed and ran") is NOT one beat — it's several: e.g. beat 1: environment event "wind" as the forest stirs, no characters yet; beat 2: a character (or first mention of the threat) with action "look" and expression "surprised", camera close_up on their reaction; beat 3: the villager(s) with action "run" or "retreat", camera medium or tracking. Never compress a multi-event sentence into a single static beat.
+  - Rule of thumb: roughly one beat per 8-14 words of narration — a short scene (one sentence) still needs at least 2 beats; a longer, event-dense scene should use up to 8.
+  - A beat where nothing changes from the previous one (same characters, same actions, same camera, no prop/environment change) is wasted — every beat should differ from its neighbor in at least camera, action, expression, or environment/prop state.
+  - Worked example — narration "The monsters emerged from the forest and the villagers scrambled to defend the gate" could become: beat 1 {camera: wide, environmentEvent: "wind", characters: []} (forest stirring, establishing) → beat 2 {camera: push_in, characters:[{id:"scout", action:"look", expression:"surprised", position:"center_left"}]} (first to notice) → beat 3 {camera: medium, environmentEvent:"", characters:[{id:"scout", action:"point", expression:"urgent", position:"center_left"},{id:"villager_1", action:"react", expression:"fear", position:"right"}]} → beat 4 {camera: tracking, characters:[{id:"villager_1", action:"run", expression:"determined", position:"right"}], props:[{id:"gate", kind:"door", state:"closed", position:"left"}]}. That is four visibly different moments for one sentence, not one static tableau.
+
+MODE CLASSIFICATION — before writing ANY scene, decide per-scene whether it is explanation content or story content, and let that decide which half of the visual-kind list is even eligible:
+- If the source material (or this specific part of it) is teaching a concept, mechanism, process, or fact — use the technical kinds (dc_motor, circuit, graph, mechanism_animation, concept_map, etc.). Narration is the teacher; the visual proves what the narration says.
+- If the source material (or this specific part of it) is telling a narrative — it has named characters, a conflict, events happening to someone, dialogue, a journey, a historical account of specific people/events — use story_scene. Characters and their actions carry the story; do NOT reduce a story beat to a concept_map, timeline, or process card just because a technical kind is more familiar. "The monster attacks the village" must show characters reacting and an environment event, not a labeled box.
+- A single lesson can mix both: a technical topic might open with a one-scene narrative hook (story_scene) before switching to explanation kinds for the actual teaching, and vice versa. Choose per scene, not once for the whole lesson.
+- Character continuity is mandatory within story_scene: reuse the exact same character "id" for the same character in every scene/beat they appear in across the whole lesson — the renderer uses that id to keep their color and identity consistent, so an inconsistent id makes them look like a different character.
+
+ANIMATION GRAMMAR — before picking a visual kind, classify what this scene is actually teaching and let that classification drive the choice. Do not default to "process" or "concept_map" out of convenience — pick the kind that actually explains the mechanism:
+- Definition of a term → concept_map or a single labeled entity, paired with a "camera" zoom onto the label at the moment it's defined.
+- Hierarchy / how-things-relate → concept_map (center_label + related_labels), parent revealed before children.
+- A process or procedure with no strict cause-effect → process (steps).
+- A real causal chain (X causes Y causes Z, energy/signal/force moving through a system) → mechanism_animation (causalChain) — never flatten a causal chain into a plain "process".
+- A physical device with a working mechanism (motor, generator, engine, switch) → dc_motor if it genuinely matches that mechanism, otherwise mechanism_animation or exploded_view — never describe a physical mechanism with concept_map.
+- Internal construction that needs parts separated in space to show assembly → exploded_view.
+- Internal construction that needs hidden layers peeled back in order (outside-in) rather than separated in space → cross_section.
+- An electrical circuit → circuit, with show_curve when charge/discharge behavior matters.
+- A signal or repeating waveform → waveform.
+- An equation or quantitative relationship → mathematical, with variables introduced one at a time.
+- Two things being contrasted → comparison.
+- Data trending over a variable → graph, with annotations marking the specific real feature being discussed.
+- Chronological sequence of real dated/ordered events → timeline.
+- A narrative beat with characters, conflict, dialogue, or events (not a technical concept) → story_scene, staged as 2-4 real shot-like beats — never represent a story beat as concept_map/timeline/process cards (see MODE CLASSIFICATION and the story_scene schema above).
+- Only when nothing above genuinely fits → particle_system, as a last resort.
+
+HARD RULE — do not let the screen sit static while the narration keeps introducing new ideas. If a single scene's narration would cover two distinct sub-ideas (e.g. "first X happens, then that causes Y"), either split it into two scenes or make sure the chosen visual kind has enough real stages/steps/parts to visually change at each sub-idea (e.g. use mechanism_animation's causalChain with one entry per sub-idea, not a single static box). A scene should never be "one paragraph of narration over one unchanging diagram." For story_scene specifically, this means: if the narration describes two different actions or moments, that's two beats minimum, not one beat holding a static pose through the whole narration.
+
+VARIETY RULE — avoid using the same visual "kind" for more than two scenes in a row unless the material genuinely has no other fitting representation (e.g. a multi-step mechanism that is legitimately several "step" scenes all using dc_motor because they're all showing the same physical device from different angles is fine — but reaching for "process" or "concept_map" repeatedly out of laziness is not). A multi-scene story arc legitimately staying in story_scene for every scene is also fine — the variety that matters there is in the beats, environments, and character actions, not in switching away from story_scene.
+
+Choose "type" and visual "kind" independently per scene based on what that specific scene is teaching — e.g. an "eli5" scene about a motor might use kind "dc_motor" with a simplified framing in the narration; a "step" scene mid-mechanism might use "circuit" or "dc_motor" depending on what's being shown at that moment.
+
+CAMERA: for ANY scene where the learner's attention should narrow onto one detail — not just "step"/"deep_dive"/"exploded_view", but also a "definition" scene zooming onto the term being defined, or a "hook" scene pushing in on the central image — you may add a top-level "camera" field: {"type":"zoom","from":1.0,"to":1.15}. Use it whenever it has a real teaching reason (directing attention the way a camera move would in a real explainer video) — omit it when a scene should stay at the default view.`;
+
+  try{
+    // Keep prompt + source text + response comfortably inside the model's
+    // 24k combined context window, since a much longer lesson output
+    // (up to 8000 tokens) now needs more of that budget than before.
+    const MAX_SOURCE_CHARS = 40000; // ~10k tokens, leaves ample room for the prompt + 8000-token response
+    const sourceText = text.length > MAX_SOURCE_CHARS
+      ? text.slice(0, MAX_SOURCE_CHARS) + "\n\n[source truncated for length]"
+      : text;
+    const resp = await fetch(`${proxyBase}/analyze`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 8000,
+        system: systemPrompt,
+        messages: [{role:"user", content: `Source content:\n\n${sourceText}`}]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    let raw = data.content.map(b=>{
+      if (typeof b.text === "string") return b.text;
+      // Workers AI sometimes returns response as an object instead of a
+      // string; stringify it so we still get valid JSON text instead of
+      // the useless "[object Object]" that Array.join() would produce.
+      return JSON.stringify(b.text);
+    }).join("");
+    raw = raw.replace(/```json|```/g,"").trim();
+    const parsed = JSON.parse(raw);
+    // Audio is now cached by content hash (narration+voice), not scene index,
+    // so staleness across a full re-analyze is impossible by construction —
+    // new narration text simply hashes to a new key. This clear is just
+    // memory hygiene (a long session could otherwise accumulate an unbounded
+    // number of old, unreachable cached buffers), not a correctness fix.
+    Object.keys(sceneAudioCache).forEach(k => delete sceneAudioCache[k]);
+    const rawScenes = parsed.scenes.map((s,i)=>({id:i, ...s}));
+    const qa = structuralQAReport(rawScenes); // check the AI's raw output before we patch anything
+    scenes = rawScenes.map(validateAndRepairScene);
+    document.getElementById('sbTitle').textContent = parsed.title || "Storyboard";
+    renderStoryboard();
+    const qaEl = document.getElementById('qaSummary');
+    if(qaEl){
+      let msg = qa.passed === qa.total
+        ? `Structural QA: ${qa.passed}/${qa.total} scenes passed (narration present, visual kind valid, required fields filled).`
+        : `Structural QA: ${qa.passed}/${qa.total} scenes passed — ${qa.results.filter(r=>!r.valid).map(r=>`scene ${r.scene}: ${r.errors.join(', ')}`).join(' | ')} (auto-repaired with safe defaults).`;
+      if(qa.varietyWarnings && qa.varietyWarnings.length){
+        msg += ` · Visual variety: ${qa.varietyWarnings.join('; ')}.`;
+      }
+      qaEl.textContent = msg;
+    }
+    analyzeStatus.textContent = `Done — ${scenes.length} scenes.`;
+    document.getElementById('storyboardSection').style.display = 'block';
+    document.getElementById('nav2').classList.add('on');
+    document.getElementById('storyboardSection').scrollIntoView({behavior:'smooth'});
+    // FIX: the button's enabled state was only checked at proxy-connect
+    // time (before the storyboard existed), so it stayed stuck disabled
+    // even after scenes were built. Re-check it here too.
+    renderBtn.disabled = scenes.length === 0;
+  }catch(err){
+    console.error(err);
+    analyzeStatus.textContent = "Something went wrong reading that source — try again.";
+  }finally{
+    analyzeBtn.disabled = false;
+  }
+}
+
+/* ---------------- storyboard rendering ---------------- */
+function renderStoryboard(){
+  const reel = document.getElementById('reel');
+  reel.innerHTML = "";
+  scenes.forEach((scene, i)=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="sprocket-row">${Array(6).fill('<div class="sprocket"></div>').join('')}</div>
+      <div class="scene-tag">${String(i+1).padStart(2,'0')} · ${(scene.type||'scene').toUpperCase()} · ${(scene.visual && scene.visual.kind) || 'process'}</div>
+      <canvas width="220" height="124"></canvas>
+      <div class="cap">
+        <h3>${scene.title}</h3>
+        <p>${scene.narration}</p>
+        <button type="button" class="regen-btn" style="margin-top:8px;background:none;border:1px solid #38383C;color:#9A9A9E;border-radius:2px;font-family:'JetBrains Mono';font-size:11px;padding:5px 9px;cursor:pointer;">↻ Regenerate this scene</button>
+      </div>
+    `;
+    reel.appendChild(card);
+    const ctx = card.querySelector('canvas').getContext('2d');
+    drawScene(ctx, 220, 124, scene, 0.5);
+    card.querySelector('.regen-btn').addEventListener('click', ()=> regenerateScene(i));
+  });
+}
+
+/* ---- regenerate a single scene without rebuilding the whole storyboard ----
+   Reuses the existing generic /analyze route (no Worker changes needed) with
+   a scoped system prompt that asks for exactly one replacement scene, given
+   the neighboring scenes for continuity. This is the direct implementation
+   of "user should not have to regenerate a 15-minute video because one scene
+   is wrong." */
+async function regenerateScene(i){
+  const scene = scenes[i];
+  if(!proxyBase){ alert("Connect your Worker URL first."); return; }
+  const instruction = prompt(`Optional — what should change about scene ${i+1} ("${scene.title}")? Leave blank for a fresh take on the same content.`, "");
+  if(instruction === null) return; // user cancelled
+
+  const cards = document.querySelectorAll('#reel .card');
+  const regenBtn = cards[i] ? cards[i].querySelector('.regen-btn') : null;
+  if(regenBtn){ regenBtn.disabled = true; regenBtn.textContent = 'Regenerating…'; }
+
+  const prevScene = scenes[i-1], nextScene = scenes[i+1];
+  const context = `Lesson title: ${document.getElementById('sbTitle').textContent}
+
+Scene being replaced (scene ${i+1} of ${scenes.length}):
+${JSON.stringify({type:scene.type, title:scene.title, narration:scene.narration, visual:scene.visual})}
+
+${prevScene ? `Previous scene, for continuity — do not repeat its content, and reuse any character ids it lists: ${JSON.stringify({title:prevScene.title, narration:prevScene.narration, characterIds:(prevScene.visual&&prevScene.visual.beats)?[...new Set(prevScene.visual.beats.flatMap(b=>(b.characters||[]).map(c=>c.id)))]:undefined})}` : '(this is the first scene in the lesson)'}
+${nextScene ? `Next scene, for continuity — do not repeat its content or steal what it should introduce, and reuse any character ids it lists: ${JSON.stringify({title:nextScene.title, narration:nextScene.narration, characterIds:(nextScene.visual&&nextScene.visual.beats)?[...new Set(nextScene.visual.beats.flatMap(b=>(b.characters||[]).map(c=>c.id)))]:undefined})}` : '(this is the last scene in the lesson)'}
+
+${instruction ? `User's requested change: ${instruction}` : "No specific instruction given — just produce a genuinely stronger, more specific version of this one scene."}`;
+
+  const regenSystemPrompt = `You are the TEACHING DIRECTOR and VISUAL DIRECTOR of an educational video engine, regenerating exactly ONE scene of an existing lesson. Output a JSON object ONLY (no markdown fences, no prose, no array) for exactly one replacement scene, in this exact shape:
+{
+  "type": "one of: hook | eli5 | definition | components | exploded_view | step | example | deep_dive | application | misconception | recap",
+  "title": "3-6 word scene title",
+  "narration": "teacher-style spoken narration for this scene",
+  "visual": { "kind": "one of: dc_motor | photovoltaic_cell | circuit | waveform | graph | mechanism_animation | process | exploded_view | cross_section | concept_map | comparison | timeline | mathematical | particle_system | story_scene", "...": "plus ONLY the fields relevant to that kind, using real named entities" }
+}
+Use the same animation-grammar classification the full lesson uses: figure out what this scene is actually teaching (a definition, a causal chain, a physical mechanism, a comparison, etc.) and pick the visual kind that genuinely explains it — never default to "process" or "concept_map" out of convenience. If this scene is narrative rather than technical (characters, conflict, events), use "story_scene" with { "environment": "location + time-of-day text", "beats": [ { "camera": "wide|medium|close_up|push_in|pull_out|pan_left|pan_right|tracking — vary this across beats, use a moving shot (push_in/pull_out/pan/tracking) at least once if there's real motion", "environmentEvent": "optional cloud/fire/flash/glow/shake/wind/rain/smoke/crowd keyword phrase", "props": "optional [{id, label, kind: door|machine|light|tool|box|vehicle, state: idle|open|closed|on|off|broken|repaired|moving, position}] for any object that should visibly change state", "characters": [ { "id": "stable_snake_case_id — reuse the SAME id this character used in the neighboring scenes below if they appear there, so their identity stays visually consistent", "name": "Display Name", "description": "identical visual description text to whatever this character id used in the neighboring scenes below, if they appear there — this drives generated character art and must not drift", "action": "idle|walk|run|approach|retreat|turn|crouch|jump|stumble|point|wave|reach|grab|push|pull|lift|throw|hold|hand_over_object|look|look_at|look_away|nod|shake_head|react|use|pick_up|place|drop|inspect|repair|open|close|activate|deactivate|carry|talk", "expression": "neutral|happy|concerned|worried|urgent|determined|surprised", "position": "left|center_left|center|center_right|right" } ] } ] } — 4-8 beats (roughly one beat per 8-14 words of narration; a sentence describing multiple events needs multiple beats, never one static beat holding through all of them). Keep continuity with the neighboring scenes given below: same terminology, no repeated content, no contradicted facts, and same character ids and descriptions if characters recur. Output ONLY the single scene's JSON object.`;
+
+  try{
+    const resp = await fetch(`${proxyBase}/analyze`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6", max_tokens: 2000,
+        system: regenSystemPrompt,
+        messages: [{role:"user", content: context}]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    let raw = data.content.map(b=> typeof b.text === "string" ? b.text : JSON.stringify(b.text)).join("");
+    raw = raw.replace(/```json|```/g,"").trim();
+    const newScene = validateAndRepairScene({ id: scene.id, ...JSON.parse(raw) });
+    // No manual cache-bust needed: the regenerated scene's new narration text
+    // will hash to a different key than the old one, so ensureSceneAudio()
+    // naturally fetches fresh audio for it rather than reusing anything old.
+    scenes[i] = newScene;
+    renderStoryboard();
+    if(document.getElementById('studioSection').style.display === 'block'){
+      renderStyleFrames();
+      if(i === 0) drawIdleStage();
+    }
+  }catch(err){
+    console.error(err);
+    alert("Couldn't regenerate that scene — try again. (" + (err.message||err) + ")");
+    if(regenBtn){ regenBtn.disabled = false; regenBtn.textContent = '↻ Regenerate this scene'; }
+  }
+}
+
+/* draws an image to "cover" the canvas (like CSS object-fit: cover),
+   with a slow zoom/pan (Ken Burns effect) driven by t (0..1) */
+/* ---------------- content-aware 2D diagram engine ----------------
+   Each scene's visual is a real, content-specific description (real named
+   entities/stages/numbers pulled from the source document by the AI step),
+   not a generic label. drawScene() routes to the right renderer for the
+   scene's chosen visual kind and draws real terms, not placeholder shapes. */
+
+/* ---------------- domain-aware educational renderer engine ----------------
+   Each scene specifies a real visual "kind" (dc_motor, photovoltaic_cell,
+   circuit, waveform, graph, process, exploded_view, concept_map, comparison,
+   timeline, mathematical, particle_system) plus real named fields pulled
+   from the source document. Renderers own their own animation timing
+   internally (deterministic, not dependent on AI-authored timing math) and
+   only use the AI's output for real entity names/labels. */
+
+function ease(x){ x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); }
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+// Defensive cleanup: the AI is asked for natural labels, but sometimes
+// emits raw identifier-style tokens instead (e.g. "village_chief" instead
+// of "Village Chief"). Rather than depend entirely on prompt compliance,
+// every label that reaches the canvas gets run through this first. It only
+// touches strings that actually look like identifiers (single token, or
+// contains _/-) and leaves normal multi-word phrases like "Silicon PV
+// Cell" or "DC Current" completely untouched.
+function humanizeLabel(s){
+  if(typeof s !== 'string' || !s) return s;
+  const looksLikeIdentifier = !s.includes(' ') || /[_-]/.test(s);
+  if(!looksLikeIdentifier) return s;
+  return s.replace(/[_-]+/g,' ').trim().split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase()+w.slice(1))
+    .join(' ');
+}
+function stage(t, from, to){ return ease(clamp01((t - from) / (to - from))); }
+
+/* ---- semantic color language: one consistent meaning per color, everywhere ---- */
+const COLOR = {
+  primary: "#38BDF8",   // normal information / default flow (spec: cyan — input/energy/data)
+  focus:   "#f59e0b",   // active focus, energy, transition (amber — not in spec palette, kept as a 3rd accent)
+  success: "#22C55E",   // positive/result/output state (spec: green)
+  danger:  "#EF4444",   // warning / opposition / contrast (spec: red)
+  teal:    "#2DD4BF",   // primary concept/highlight (spec: teal)
+  inactive:"#555560",   // context / dimmed / not currently explained
+  text:    "#F8FAFC",   // spec: primary text
+  muted:   "#CBD5E1",   // spec: secondary text — captions, axis labels, support text
+  bg:      "#0F172A"    // spec: canvas background
+};
+
+/* ---- camera system: supports two forms —
+   simple: { "type":"zoom", "from":1.0, "to":1.18 }
+   keyframed: { "type":"keyframes", "keyframes":[{"t":0,"x":0.5,"y":0.5,"zoom":1},{"t":1,"x":0.3,"y":0.4,"zoom":1.4}] }
+   x/y are normalized 0..1 focus points on the canvas. ---- */
+function smoothstep(x){ x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); }
+function lerp(a,b,u){ return a + (b-a)*u; }
+function cameraAt(t, keyframes){
+  if(!keyframes || !keyframes.length) return {x:0.5, y:0.5, zoom:1};
+  let a = keyframes[0], b = keyframes[keyframes.length-1];
+  for(let i=0;i<keyframes.length-1;i++){
+    if(t >= keyframes[i].t && t <= keyframes[i+1].t){ a = keyframes[i]; b = keyframes[i+1]; break; }
+  }
+  const u = smoothstep((t-a.t) / Math.max(0.001, b.t-a.t));
+  return { x: lerp(a.x ?? 0.5, b.x ?? 0.5, u), y: lerp(a.y ?? 0.5, b.y ?? 0.5, u), zoom: lerp(a.zoom ?? 1, b.zoom ?? 1, u) };
+}
+function applyCamera(ctx, w, h, camera, t){
+  if(!camera) return false;
+  let cx=0.5, cy=0.5, zoom=1;
+  if(camera.type === "keyframes" && camera.keyframes && camera.keyframes.length){
+    const cam = cameraAt(t, camera.keyframes);
+    cx=cam.x; cy=cam.y; zoom=cam.zoom;
+  } else if(camera.type === "zoom"){
+    const from = typeof camera.from === "number" ? camera.from : 1.0;
+    const to = typeof camera.to === "number" ? camera.to : 1.0;
+    zoom = from + (to-from)*ease(t);
+  } else {
+    return false;
+  }
+  const fx = cx*w, fy = cy*h;
+  ctx.save();
+  ctx.translate(fx, fy);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-fx, -fy);
+  return true;
+}
+
+/* ---- lightweight automated QA: a scene should never render blank or
+   crash because the AI omitted a required field — fill safe defaults
+   instead of failing. This is a defensive check, not a full re-generation
+   pipeline (that would need another round-trip AI call per failed scene,
+   which isn't built here). ---- */
+const REQUIRED_FIELDS_BY_KIND = {
+  dc_motor: [], photovoltaic_cell: [], circuit: [], waveform: [], graph: [],
+  mechanism_animation: ["causalChain"],
+  process: ["steps"], exploded_view: ["parts"], cross_section: ["parts"], concept_map: ["related_labels"],
+  comparison: ["left_entity","right_entity"], timeline: ["stages"],
+  mathematical: ["equation"], particle_system: [],
+  story_scene: ["beats"]
+};
+function validateAndRepairScene(scene){
+  scene.visual = scene.visual || {};
+  const kind = scene.visual.kind && REQUIRED_FIELDS_BY_KIND[scene.visual.kind] ? scene.visual.kind : "process";
+  scene.visual.kind = kind;
+  if(!scene.narration || !scene.narration.trim()){
+    scene.narration = scene.title || "Let's look at this next part.";
+  }
+  if(kind === "story_scene"){
+    // A generic [title] array default (used for every other kind below)
+    // doesn't make sense for story_scene's beat structure, so it gets its
+    // own safe fallback: one idle beat with a single generic character,
+    // in a plain setting, rather than a beats:["This concept"] non-object.
+    if(!Array.isArray(scene.visual.beats) || scene.visual.beats.length === 0){
+      scene.visual.beats = [{
+        environmentEvent: "",
+        characters: [{ id: "narrator", name: scene.title || "Narrator", action: "idle", expression: "neutral", position: "center" }]
+      }];
+    }
+    if(!scene.visual.environment) scene.visual.environment = "a plain outdoor setting, daytime";
+    return scene;
+  }
+  const required = REQUIRED_FIELDS_BY_KIND[kind] || [];
+  required.forEach(field=>{
+    const val = scene.visual[field];
+    if(!val || (Array.isArray(val) && val.length===0)){
+      scene.visual[field] = [scene.title || "This concept"];
+    }
+  });
+  return scene;
+}
+
+/* ---- structural QA report ----
+   This checks only what code can actually verify: required fields present,
+   narration non-empty, kind recognized. It is NOT the subjective "visual
+   mechanism quality" scoring a human reviewer would give — that needs
+   actual eyes (or a vision-capable model) on the rendered frames, which
+   this function cannot do. Labeled honestly as structural QA, not visual QA. */
+function structuralQAReport(scenes){
+  const results = scenes.map((scene,i)=>{
+    const errors = [];
+    if(!scene.narration || !scene.narration.trim()) errors.push("missing narration");
+    if(!scene.visual || !scene.visual.kind) errors.push("missing visual kind");
+    else if(!RENDERER_REGISTRY[scene.visual.kind]) errors.push("unknown visual kind: "+scene.visual.kind);
+    const required = REQUIRED_FIELDS_BY_KIND[scene.visual && scene.visual.kind] || [];
+    required.forEach(f=>{
+      const val = scene.visual[f];
+      if(!val || (Array.isArray(val) && val.length===0)) errors.push(`missing required field "${f}"`);
+    });
+    return { scene: i+1, title: scene.title, valid: errors.length===0, errors };
+  });
+  const passed = results.filter(r=>r.valid).length;
+  // Visual-variety check: this is a real, checkable signal (repeated identical
+  // kind 3+ scenes running), distinct from the subjective "is this a good
+  // animation" judgment a human/vision model would give. It's a direct,
+  // mechanical stand-in for the spec's "don't make every scene a colored box"
+  // requirement — flagged, not auto-repaired, since fixing it well requires
+  // re-choosing a kind intelligently, which needs another AI round-trip.
+  // Kinds excluded from this check are ones that are CORRECT to repeat: a
+  // multi-shot story is supposed to stay in story_scene, and a multi-step
+  // device walkthrough is supposed to stay on the same device diagram — only
+  // the generic "reached for out of laziness" kinds get flagged.
+  const LAZY_DEFAULT_KINDS = new Set(["process","concept_map","exploded_view","cross_section","particle_system"]);
+  const varietyWarnings = [];
+  let runKind = null, runStart = 0;
+  scenes.forEach((scene,i)=>{
+    const kind = (scene.visual && scene.visual.kind) || "process";
+    if(kind === runKind){
+      if(LAZY_DEFAULT_KINDS.has(kind) && i - runStart === 2){ // this is the 3rd scene in the run
+        varietyWarnings.push(`scenes ${runStart+1}-${i+1} all use "${kind}" — consider more variety`);
+      }
+    } else {
+      runKind = kind; runStart = i;
+    }
+  });
+  return { results, passed, total: results.length, varietyWarnings };
+}
+
+/* ---- renderer registry: one lookup table mapping visual kind -> renderer
+   function, instead of a switch statement — makes the domain-renderer set
+   explicit and easy to extend. ---- */
+const RENDERER_REGISTRY = {
+  dc_motor: (ctx,w,h,scene,visual,t)=> renderDCMotor(ctx,w,h,visual,t),
+  photovoltaic_cell: (ctx,w,h,scene,visual,t)=> renderPhotovoltaicCell(ctx,w,h,visual,t),
+  circuit: (ctx,w,h,scene,visual,t)=> renderCircuit(ctx,w,h,visual,t),
+  waveform: (ctx,w,h,scene,visual,t)=> renderWaveform(ctx,w,h,visual,t),
+  graph: (ctx,w,h,scene,visual,t)=> renderGraph(ctx,w,h,visual,t),
+  mechanism_animation: renderMechanismAnimation,
+  block_diagram: renderProcess,
+  process: renderProcess,
+  anatomy: renderExplodedView,
+  architecture: renderExplodedView,
+  exploded_view: renderExplodedView,
+  cross_section: renderCrossSection,
+  concept_map: renderConceptMap,
+  comparison: (ctx,w,h,scene,visual,t)=> renderComparison(ctx,w,h,visual,t),
+  timeline: (ctx,w,h,scene,visual,t)=> renderTimeline(ctx,w,h,visual,t),
+  mathematical: (ctx,w,h,scene,visual,t)=> renderMathematical(ctx,w,h,visual,t),
+  particle_system: (ctx,w,h,scene,visual,t)=> renderParticleSystem(ctx,w,h,visual,t),
+  story_scene: renderStoryScene
+};
+
+function drawScene(ctx, w, h, scene, t, showCaption){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = COLOR.bg;
+  ctx.fillRect(0,0,w,h);
+
+  const visual = scene.visual || {};
+  const kind = visual.kind || "process";
+  const cameraApplied = applyCamera(ctx, w, h, scene.camera, t);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold ${Math.max(13, w/32)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(scene.title || "", w/2, h*0.09);
+
+  const renderer = RENDERER_REGISTRY[kind] || RENDERER_REGISTRY.process;
+  renderer(ctx, w, h, scene, visual, t);
+
+  if(cameraApplied) ctx.restore();
+
+  // Captions are drawn INSIDE the canvas (not as an HTML overlay) specifically
+  // so they get captured by captureStream() and end up baked into the
+  // exported .webm — an HTML overlay sitting on top of the canvas would show
+  // during live preview but be completely absent from the recorded file.
+  // showCaptions is a global toggle the user controls (spec requirement:
+  // captions must be optional, on/off before export).
+  if(showCaption && typeof showCaptions !== 'undefined' && showCaptions && scene.narration){
+    drawCaptionBand(ctx, w, h, scene.narration);
+  }
+}
+
+function drawCaptionBand(ctx, w, h, text){
+  ctx.save();
+  const bandH = Math.max(h*0.16, 30);
+  const grad = ctx.createLinearGradient(0, h-bandH, 0, h);
+  grad.addColorStop(0, "rgba(15,23,42,0)");
+  grad.addColorStop(1, "rgba(15,23,42,0.88)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, h-bandH, w, bandH);
+  ctx.fillStyle = COLOR.text;
+  ctx.font = `${Math.max(11, w/48)}px sans-serif`;
+  ctx.textAlign = "center";
+  wrapText(ctx, text, w/2, h - bandH*0.42, w*0.86, Math.max(13, h*0.045));
+  ctx.restore();
+}
+
+/* ---- DC MOTOR: magnets, field, coil, current, force, rotation ---- */
+function renderDCMotor(ctx, w, h, visual, t){
+  const cx = w*0.5, cy = h*0.56;
+  const revealMagnets = stage(t, 0, 0.18);
+  const revealField   = stage(t, 0.12, 0.35);
+  const revealCoil    = stage(t, 0.28, 0.5);
+  const revealCurrent = stage(t, 0.45, 0.68);
+  const revealForce   = stage(t, 0.6, 0.85);
+  const rotate        = stage(t, 0.78, 1.0);
+
+  const leftLabel = visual.magnet_pole_left || "N";
+  const rightLabel = visual.magnet_pole_right || "S";
+  const coilLabel = visual.coil_label || "Armature Coil";
+  const cw = visual.current_direction !== "ccw";
+
+  if(revealMagnets > 0){
+    ctx.globalAlpha = revealMagnets;
+    drawMagnetBlock(ctx, w*0.16, cy, w*0.14, h*0.32, "#38bdf8", leftLabel);
+    drawMagnetBlock(ctx, w*0.84, cy, w*0.14, h*0.32, "#E8432F", rightLabel);
+    ctx.globalAlpha = 1;
+  }
+  if(revealField > 0){
+    ctx.save(); ctx.globalAlpha = revealField*0.6; ctx.strokeStyle = "#8888a0"; ctx.lineWidth = 1.5;
+    for(let i=-2;i<=2;i++){
+      ctx.beginPath(); ctx.moveTo(w*0.23, cy+i*h*0.06); ctx.lineTo(w*0.77, cy+i*h*0.06); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if(revealCoil > 0){
+    ctx.save();
+    ctx.globalAlpha = revealCoil;
+    ctx.translate(cx, cy);
+    ctx.rotate(rotate * Math.PI * 4 * (cw?1:-1));
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(-w*0.02, -h*0.16, w*0.04, h*0.32);
+    ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 2; ctx.strokeRect(-w*0.02, -h*0.16, w*0.04, h*0.32);
+    ctx.restore();
+    ctx.strokeStyle = "#555560"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx, cy-h*0.22); ctx.lineTo(cx, cy+h*0.22); ctx.stroke();
+    ctx.fillStyle = "#e2e8f0"; ctx.font = `${Math.max(10,w/44)}px sans-serif`; ctx.textAlign='center';
+    ctx.globalAlpha = revealCoil;
+    ctx.fillText(coilLabel, cx, cy - h*0.28);
+    ctx.globalAlpha = 1;
+  }
+  if(revealCurrent > 0){
+    ctx.globalAlpha = revealCurrent;
+    drawArrow2(ctx, cx-w*0.09, cy-h*0.13, cx+w*0.09, cy-h*0.13, "#f59e0b");
+    drawArrow2(ctx, cx+w*0.09, cy+h*0.13, cx-w*0.09, cy+h*0.13, "#f59e0b");
+    ctx.fillStyle="#f59e0b"; ctx.font=`${Math.max(9,w/48)}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText("Armature Current", cx, cy-h*0.34);
+    ctx.globalAlpha = 1;
+  }
+  if(revealForce > 0){
+    ctx.globalAlpha = revealForce;
+    drawArrow2(ctx, cx-w*0.09, cy, cx-w*0.09, cy-h*0.22, "#4FD1C5");
+    drawArrow2(ctx, cx+w*0.09, cy, cx+w*0.09, cy+h*0.22, "#4FD1C5");
+    ctx.fillStyle="#4FD1C5"; ctx.font=`bold ${Math.max(10,w/42)}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText("Force → Torque → Rotation", cx, cy+h*0.36);
+    ctx.globalAlpha = 1;
+  }
+}
+function drawMagnetBlock(ctx, x, y, w, h, color, label){
+  ctx.fillStyle = color;
+  ctx.fillRect(x-w/2, y-h/2, w, h);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth=2; ctx.strokeRect(x-w/2, y-h/2, w, h);
+  ctx.fillStyle = "#0f172a"; ctx.font = `bold ${Math.max(16,w*0.5)}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(label, x, y);
+  ctx.textBaseline='alphabetic';
+}
+function drawArrow2(ctx, x1,y1,x2,y2,color){
+  const headlen=8, dx=x2-x1, dy=y2-y1, ang=Math.atan2(dy,dx);
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-headlen*Math.cos(ang-Math.PI/6), y2-headlen*Math.sin(ang-Math.PI/6));
+  ctx.lineTo(x2-headlen*Math.cos(ang+Math.PI/6), y2-headlen*Math.sin(ang+Math.PI/6));
+  ctx.closePath(); ctx.fill();
+}
+
+/* ---- PHOTOVOLTAIC CELL: photons -> cell -> electron flow -> circuit -> current ---- */
+function renderPhotovoltaicCell(ctx, w, h, visual, t){
+  const cellX = w*0.5, cellY = h*0.42, cellW = w*0.34, cellH = h*0.16;
+  const sourceLabel = visual.source_label || "Sunlight";
+  const cellLabel = visual.cell_label || "Silicon PV Cell";
+  const carrierLabel = visual.carrier_label || "Electrons";
+  const circuitLabel = visual.circuit_label || "External Circuit";
+  const outputLabel = visual.output_label || "DC Current";
+
+  ctx.fillStyle="#e2e8f0"; ctx.font=`${Math.max(10,w/46)}px sans-serif`; ctx.textAlign='center';
+  ctx.fillText(sourceLabel, w*0.5, h*0.14);
+  const photonReveal = stage(t,0,0.3);
+  if(photonReveal>0){
+    ctx.strokeStyle="#facc15"; ctx.lineWidth=2;
+    for(let i=0;i<5;i++){
+      const px = w*0.3 + i*w*0.1;
+      const py = h*0.18 + ((t*2)%1)*(cellY-h*0.18-cellH/2);
+      ctx.globalAlpha = photonReveal;
+      ctx.beginPath(); ctx.moveTo(px, h*0.18); ctx.lineTo(px, Math.min(py, cellY-cellH/2)); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+  drawEntityBox(ctx, cellX, cellY, cellW, cellH, "#4FD1C5", cellLabel);
+
+  const carrierReveal = stage(t, 0.35, 0.6);
+  if(carrierReveal>0){
+    ctx.fillStyle="#facc15";
+    for(let i=0;i<6;i++){
+      const ang = (t*3 + i/6) % 1;
+      const ex = cellX - cellW*0.3 + (i%3)*cellW*0.3;
+      const ey = cellY - cellH*0.15 + Math.sin(ang*Math.PI*2)*cellH*0.15;
+      ctx.globalAlpha = carrierReveal;
+      ctx.beginPath(); ctx.arc(ex,ey,Math.max(2,w/220),0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.fillStyle="#facc15"; ctx.font=`${Math.max(9,w/50)}px sans-serif`; ctx.textAlign='center';
+    ctx.globalAlpha = carrierReveal;
+    ctx.fillText(carrierLabel, cellX, cellY+cellH*0.9);
+    ctx.globalAlpha = 1;
+  }
+
+  const circuitReveal = stage(t, 0.55, 0.8);
+  const loadY = h*0.78, loadW = w*0.28, loadH = h*0.12;
+  if(circuitReveal>0){
+    ctx.globalAlpha = circuitReveal;
+    ctx.strokeStyle="#8888a0"; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(cellX-cellW/2, cellY+cellH/2); ctx.lineTo(cellX-cellW/2, loadY);
+    ctx.lineTo(cellX-loadW/2, loadY);
+    ctx.moveTo(cellX+cellW/2, cellY+cellH/2); ctx.lineTo(cellX+cellW/2, loadY);
+    ctx.lineTo(cellX+loadW/2, loadY);
+    ctx.stroke();
+    drawEntityBox(ctx, cellX, loadY, loadW, loadH, "#38bdf8", circuitLabel);
+    ctx.globalAlpha = 1;
+  }
+  const outputReveal = stage(t, 0.8, 1.0);
+  if(outputReveal>0){
+    ctx.fillStyle="#facc15"; ctx.font=`bold ${Math.max(11,w/38)}px sans-serif`; ctx.textAlign='center';
+    ctx.globalAlpha = outputReveal;
+    ctx.fillText(`→ ${outputLabel}`, cellX, loadY + h*0.13);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ---- real schematic symbols, drawn to convention, not generic boxes ---- */
+function drawResistorSymbol(ctx, x, y, len, color){
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+  const zig = 6, step = len/zig;
+  ctx.beginPath();
+  ctx.moveTo(x-len/2, y);
+  for(let i=0;i<zig;i++){
+    const zx = x-len/2 + step*(i+0.5);
+    ctx.lineTo(zx, y + (i%2===0? -len*0.12 : len*0.12));
+  }
+  ctx.lineTo(x+len/2, y);
+  ctx.stroke();
+}
+function drawCapacitorSymbol(ctx, x, y, size, color){
+  ctx.strokeStyle = color; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x-6, y-size/2); ctx.lineTo(x-6, y+size/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+6, y-size/2); ctx.lineTo(x+6, y+size/2); ctx.stroke();
+}
+function drawDiodeSymbol(ctx, x, y, size, color){
+  ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x-size/2, y-size/2); ctx.lineTo(x-size/2, y+size/2); ctx.lineTo(x+size/2, y); ctx.closePath();
+  ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x+size/2, y-size/2); ctx.lineTo(x+size/2, y+size/2); ctx.stroke();
+}
+function drawBatterySymbol(ctx, x, y, size, color){
+  ctx.strokeStyle = color; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x-8, y-size/2); ctx.lineTo(x-8, y+size/2); ctx.stroke();
+  ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(x+8, y-size/3.2); ctx.lineTo(x+8, y+size/3.2); ctx.stroke();
+}
+function drawSchematicComponent(ctx, x, y, label, type, color, w){
+  const size = Math.max(30, w*0.06);
+  switch(type){
+    case "resistor": drawResistorSymbol(ctx, x, y, size*1.6, color); break;
+    case "capacitor": drawCapacitorSymbol(ctx, x, y, size, color); break;
+    case "diode": case "led": drawDiodeSymbol(ctx, x, y, size, color); break;
+    case "battery": case "source": drawBatterySymbol(ctx, x, y, size, color); break;
+    default: drawResistorSymbol(ctx, x, y, size*1.6, color);
+  }
+  ctx.fillStyle = COLOR.text; ctx.font = `${Math.max(9,w/48)}px sans-serif`; ctx.textAlign='center';
+  ctx.fillText(label, x, y + size*0.9);
+}
+
+/* ---- CIRCUIT: real schematic symbols, wires, animated current, optional charge curve ---- */
+function renderCircuit(ctx, w, h, visual, t){
+  const midY = h*0.42;
+  const sourceLabel = visual.source_label || "Voltage Source";
+  const componentLabel = visual.component_label || "Component";
+  const componentType = visual.component_type || "resistor";
+  const showCurve = !!visual.show_curve;
+
+  const boxY = midY, leftX = w*0.22, rightX = w*0.78;
+  drawSchematicComponent(ctx, leftX, boxY, sourceLabel, "battery", COLOR.focus, w);
+  drawSchematicComponent(ctx, rightX, boxY, componentLabel, componentType, COLOR.primary, w);
+
+  ctx.strokeStyle="#8888a0"; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(leftX+w*0.1, boxY-h*0.09); ctx.lineTo(rightX-w*0.1, boxY-h*0.09);
+  ctx.moveTo(leftX+w*0.1, boxY+h*0.09); ctx.lineTo(rightX-w*0.1, boxY+h*0.09);
+  ctx.stroke();
+
+  const cyclePos = (t*1.4) % 1;
+  const topLen = (rightX-w*0.1)-(leftX+w*0.1);
+  ctx.fillStyle="#facc15";
+  ctx.beginPath();
+  ctx.arc(leftX+w*0.1 + topLen*cyclePos, boxY-h*0.09, Math.max(3,w/180), 0, Math.PI*2);
+  ctx.fill();
+
+  if(showCurve){
+    const curveType = visual.curve_type === "discharge" ? "discharge" : "charge";
+    const gx = w*0.5, gy = h*0.78, gw = w*0.6, gh = h*0.24;
+    ctx.strokeStyle="#555560"; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(gx-gw/2, gy+gh/2); ctx.lineTo(gx+gw/2, gy+gh/2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gx-gw/2, gy+gh/2); ctx.lineTo(gx-gw/2, gy-gh/2); ctx.stroke();
+    ctx.strokeStyle="#4FD1C5"; ctx.lineWidth=2.5; ctx.beginPath();
+    const nPts = 40;
+    for(let i=0;i<=nPts;i++){
+      const px = i/nPts;
+      const val = curveType==="charge" ? (1-Math.exp(-4*px)) : Math.exp(-4*px);
+      const drawUpTo = clamp01(t*1.3);
+      if(px > drawUpTo) break;
+      const x = gx-gw/2 + px*gw;
+      const y = gy+gh/2 - val*gh;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.fillStyle="#8a8a96"; ctx.font=`${Math.max(9,w/54)}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText(curveType==="charge" ? "Voltage rising as it charges" : "Voltage falling as it discharges", gx, gy+gh/2+h*0.05);
+  }
+}
+
+/* ---- WAVEFORM: animated signal with a moving marker on the curve ---- */
+function renderWaveform(ctx, w, h, visual, t){
+  const label = visual.label || "Signal";
+  const type = visual.wave_type || "sine";
+  const gx = w*0.5, gy = h*0.5, gw = w*0.74, gh = h*0.34;
+  ctx.strokeStyle="#555560"; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(gx-gw/2, gy); ctx.lineTo(gx+gw/2, gy); ctx.stroke();
+
+  ctx.strokeStyle="#4FD1C5"; ctx.lineWidth=2.5; ctx.beginPath();
+  const nPts = 120, cycles=3, phase = t*Math.PI*2;
+  for(let i=0;i<=nPts;i++){
+    const px = i/nPts;
+    let val;
+    if(type==="square") val = Math.sign(Math.sin(px*cycles*Math.PI*2 - phase));
+    else if(type==="pulse") val = ((px*cycles - t*cycles) % 1 < 0.25) ? 1 : -1;
+    else val = Math.sin(px*cycles*Math.PI*2 - phase);
+    const x = gx-gw/2+px*gw, y = gy - val*gh/2;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  const markerX = gx-gw/2 + ((t*2)%1)*gw;
+  let markerVal = type==="square" ? Math.sign(Math.sin((((t*2)%1))*cycles*Math.PI*2 - phase))
+                 : Math.sin((((t*2)%1))*cycles*Math.PI*2 - phase);
+  ctx.fillStyle="#facc15";
+  ctx.beginPath(); ctx.arc(markerX, gy-markerVal*gh/2, Math.max(3,w/170), 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle="#e2e8f0"; ctx.font=`${Math.max(10,w/44)}px sans-serif`; ctx.textAlign='center';
+  ctx.fillText(label, w/2, gy+gh/2+h*0.09);
+  if(visual.x_label){ ctx.fillStyle="#8a8a96"; ctx.font=`${Math.max(8,w/56)}px sans-serif`; ctx.fillText(visual.x_label, gx+gw/2+w*0.02, gy); }
+}
+
+/* ---- GRAPH: generic x-y curve (linear / exponential rise-decay / step) ---- */
+function renderGraph(ctx, w, h, visual, t){
+  const gx = w*0.5, gy = h*0.62, gw = w*0.66, gh = h*0.38;
+  const type = visual.curve_type || "linear";
+  ctx.strokeStyle="#555560"; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(gx-gw/2, gy+gh/2); ctx.lineTo(gx+gw/2, gy+gh/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(gx-gw/2, gy+gh/2); ctx.lineTo(gx-gw/2, gy-gh/2); ctx.stroke();
+
+  ctx.strokeStyle="#4FD1C5"; ctx.lineWidth=2.5; ctx.beginPath();
+  const nPts = 60, drawUpTo = clamp01(t*1.2);
+  let lastX, lastY;
+  for(let i=0;i<=nPts;i++){
+    const px = i/nPts;
+    if(px > drawUpTo) break;
+    let val;
+    if(type==="exponential_rise") val = 1-Math.exp(-4*px);
+    else if(type==="exponential_decay") val = Math.exp(-4*px);
+    else if(type==="step") val = px < 0.4 ? 0 : 1;
+    else val = px;
+    const x = gx-gw/2+px*gw, y = gy+gh/2 - val*gh;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    lastX=x; lastY=y;
+  }
+  ctx.stroke();
+  if(lastX!==undefined){
+    ctx.fillStyle="#facc15"; ctx.beginPath(); ctx.arc(lastX,lastY,Math.max(3,w/180),0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle="#8a8a96"; ctx.font=`${Math.max(9,w/50)}px sans-serif`; ctx.textAlign='center';
+  if(visual.x_label) ctx.fillText(visual.x_label, gx, gy+gh/2+h*0.07);
+  ctx.save(); ctx.translate(gx-gw/2-w*0.05, gy); ctx.rotate(-Math.PI/2);
+  if(visual.y_label) ctx.fillText(visual.y_label, 0, 0);
+  ctx.restore();
+  if(visual.highlight_label){
+    ctx.fillStyle="#e2e8f0"; ctx.font=`${Math.max(10,w/42)}px sans-serif`;
+    ctx.fillText(visual.highlight_label, gx, gy-gh/2-h*0.04);
+  }
+  // real annotations: vertical/horizontal marker lines computed from the same data space
+  (visual.annotations||[]).forEach(ann=>{
+    if(t < 0.7) return;
+    ctx.strokeStyle = COLOR.focus; ctx.setLineDash([4,4]); ctx.lineWidth = 1.5;
+    ctx.fillStyle = COLOR.focus; ctx.font = `${Math.max(8,w/54)}px sans-serif`; ctx.textAlign='left';
+    if(ann.type === "vertical" && typeof ann.x === "number"){
+      const ax = gx-gw/2 + clamp01(ann.x)*gw;
+      ctx.beginPath(); ctx.moveTo(ax, gy-gh/2); ctx.lineTo(ax, gy+gh/2); ctx.stroke();
+      ctx.fillText(ann.label||"", ax+4, gy-gh/2+10);
+    } else if(ann.type === "horizontal" && typeof ann.y === "number"){
+      const ay = gy+gh/2 - clamp01(ann.y)*gh;
+      ctx.beginPath(); ctx.moveTo(gx-gw/2, ay); ctx.lineTo(gx+gw/2, ay); ctx.stroke();
+      ctx.fillText(ann.label||"", gx-gw/2+4, ay-4);
+    }
+    ctx.setLineDash([]);
+  });
+}
+
+/* ---- PROCESS / BLOCK DIAGRAM: real sequential steps with a moving indicator ---- */
+function renderProcess(ctx, w, h, scene, visual, t){
+  const steps = (visual.steps && visual.steps.length ? visual.steps : [scene.title || "Step"]).slice(0,6);
+  const n = steps.length, spacing = w*0.8/Math.max(n-1,1);
+  const y = h*0.5;
+  steps.forEach((lab,i)=>{
+    const x = w*0.1 + i*spacing;
+    const active = Math.floor(t*n) % n === i;
+    drawEntityBox(ctx, x, y, Math.min(w*0.32, spacing*0.85), h*0.15, active?"#4FD1C5":"#38bdf8", lab);
+    if(i<n-1) drawArrow2(ctx, x+Math.min(w*0.32,spacing*0.85)/2+4, y, x+spacing-Math.min(w*0.32,spacing*0.85)/2-4, y, "#8888a0");
+  });
+}
+
+/* ---- EXPLODED VIEW: real parts separating from an assembly, with a subtle
+   2.5D depth cue (shadow + offset) so layers read as physically separated ---- */
+/* ---- EXPLODED VIEW V2: parts separate along real directional vectors from
+   a common center, with faint ghost guide lines showing where each part
+   belongs — so the learner understands assembly, not just a stacked list. ---- */
+function renderExplodedView(ctx, w, h, scene, visual, t){
+  const parts = (visual.parts && visual.parts.length ? visual.parts : [scene.title || "Component"]).slice(0,5);
+  const n = parts.length;
+  const cx = w*0.5, cy = h*0.55;
+  const ease_ = stage(t, 0, 0.55);
+
+  // real directional vectors radiating from the assembled center — each
+  // part explodes outward along its own angle, not just stacked vertically
+  const vectors = parts.map((_,i)=>{
+    const ang = (i/n)*Math.PI*2 - Math.PI/2;
+    return { x: Math.cos(ang), y: Math.sin(ang)*0.7 };
+  });
+  const distance = Math.min(w,h)*0.34;
+
+  // ghost assembly guides: faint lines from the assembled center out to
+  // each part's final exploded position, so the spatial relationship reads
+  // clearly even mid-explosion
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
+  vectors.forEach(v=>{
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + v.x*distance, cy + v.y*distance);
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // the assembled silhouette at center, fading as parts separate
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.08, 1-ease_);
+  ctx.strokeStyle = COLOR.inactive; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, Math.min(w,h)*0.1, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+
+  parts.forEach((lab,i)=>{
+    const v = vectors[i];
+    const partReveal = stage(t, i*0.06, i*0.06+0.4);
+    const x = cx + v.x*distance*ease_;
+    const y = cy + v.y*distance*ease_;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0.55, partReveal); // floor keeps label text readable mid-transition, not just fully faded-in
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 3 + i*1.2;
+    ctx.shadowOffsetY = 4 + i*1.2;
+    drawEntityBox(ctx, x, y, w*0.26, h*0.12, PART_PALETTE[i%PART_PALETTE.length], lab);
+    ctx.restore();
+  });
+}
+const PART_PALETTE = ["#38bdf8","#10b981","#f59e0b","#E8432F","#a78bfa"];
+
+/* ---- CROSS SECTION: outer housing fades out, internal layers reveal one
+   at a time — distinct from exploded_view (which separates parts in space,
+   not by peeling back hidden layers) ---- */
+function renderCrossSection(ctx, w, h, scene, visual, t){
+  const parts = (visual.parts && visual.parts.length ? visual.parts : [scene.title || "Internal Layer"]).slice(0,5);
+  const n = parts.length;
+  const housingFade = 1 - stage(t, 0, 0.25);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.08, housingFade);
+  ctx.strokeStyle = COLOR.inactive; ctx.lineWidth = 3;
+  roundRect(ctx, w*0.15, h*0.2, w*0.7, h*0.55, 16); ctx.stroke();
+  ctx.restore();
+
+  parts.forEach((lab,i)=>{
+    const layerStart = 0.25 + i*(0.6/n), layerEnd = layerStart + 0.6/n;
+    const reveal = stage(t, layerStart, layerEnd);
+    if(reveal<=0) return;
+    const y = h*0.3 + i*(h*0.42/Math.max(n-1,1));
+    ctx.save();
+    ctx.globalAlpha = Math.max(0.55, reveal); // keep the label legible once it's visible at all
+    drawEntityBox(ctx, w*0.5, y, w*0.5, h*0.1, PART_PALETTE[i%PART_PALETTE.length], lab);
+    ctx.restore();
+  });
+}
+
+/* ---- MECHANISM ANIMATION: a real causal chain (cause -> effect -> cause ->
+   effect...) with an energy/signal indicator moving through each real named
+   stage in order — this is the direct fix for "boxes instead of a
+   mechanism": every stage is a real link in an actual causal sequence, not
+   a decorative box. ---- */
+function renderMechanismAnimation(ctx, w, h, scene, visual, t){
+  const chain = (visual.causalChain && visual.causalChain.length ? visual.causalChain : [scene.title || "Stage"]).slice(0,10);
+  const n = chain.length;
+  const y = h*0.55;
+  const spacing = w*0.86/Math.max(n-1,1);
+  const activePos = t*(n-1);
+
+  ctx.strokeStyle = COLOR.inactive; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(w*0.07,y); ctx.lineTo(w*0.07+spacing*(n-1),y); ctx.stroke();
+
+  chain.forEach((lab,i)=>{
+    const x = w*0.07 + i*spacing;
+    const dist = Math.abs(activePos - i);
+    const active = dist < 0.5;
+    const passed = i <= activePos;
+    ctx.fillStyle = active ? COLOR.focus : passed ? COLOR.primary : COLOR.inactive;
+    ctx.beginPath(); ctx.arc(x,y, active?9:6, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = active ? "#ffffff" : COLOR.text;
+    ctx.font = `${active?'bold ':''}${Math.max(9,w/46)}px sans-serif`;
+    ctx.textAlign='center';
+    ctx.fillText(humanizeLabel(lab), x, y + (i%2===0 ? h*0.09 : -h*0.07));
+  });
+
+  // the moving cause->effect indicator itself, travelling along the chain
+  const ix = w*0.07 + Math.min(activePos, n-1)*spacing;
+  ctx.fillStyle = "#facc15";
+  ctx.beginPath(); ctx.arc(ix, y, 5, 0, Math.PI*2); ctx.fill();
+
+  // name the current causal link explicitly, so the learner sees WHY it moves
+  const fromIdx = Math.min(Math.floor(activePos), n-2 >=0 ? n-2 : 0);
+  if(n>1 && fromIdx < n-1){
+    ctx.fillStyle = COLOR.text; ctx.font = `${Math.max(9,w/50)}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText(`${humanizeLabel(chain[fromIdx])} → causes → ${humanizeLabel(chain[fromIdx+1])}`, w/2, h*0.85);
+  }
+}
+
+/* ---- CONCEPT MAP: central idea with related terms connected by lines ---- */
+function renderConceptMap(ctx, w, h, scene, visual, t){
+  const center = visual.center_label || scene.title || "Concept";
+  const related = (visual.related_labels && visual.related_labels.length ? visual.related_labels : []).slice(0,6);
+  const cx=w/2, cy=h*0.56;
+  const centerHalfW = w*0.3/2, satelliteHalfW = w*0.22/2;
+  // The radius needs enough horizontal clearance for the worst case — a
+  // satellite sitting almost due left/right of center — or its box
+  // overlaps the center box. min(w,h)*0.28 alone doesn't guarantee that at
+  // small n (2-3 related terms), which is what caused boxes to overlap.
+  const r = Math.max(Math.min(w,h)*0.28, centerHalfW + satelliteHalfW + w*0.02);
+  drawEntityBox(ctx, cx, cy, w*0.3, h*0.14, "#4FD1C5", center);
+  const n = related.length;
+  related.forEach((lab,i)=>{
+    const reveal = stage(t, i*0.12, i*0.12+0.3);
+    const ang = (i/n)*Math.PI*2 - Math.PI/2;
+    const x = cx+Math.cos(ang)*r, y = cy+Math.sin(ang)*r;
+    ctx.globalAlpha = Math.max(0.55, reveal); // keep satellite labels readable once visible, not stuck dim
+    ctx.strokeStyle="#555560"; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y); ctx.stroke();
+    drawEntityBox(ctx, x, y, w*0.22, h*0.1, "#38bdf8", lab);
+    ctx.globalAlpha = 1;
+  });
+}
+
+/* ---- COMPARISON: two contrasted real entities ---- */
+function renderComparison(ctx, w, h, visual, t){
+  const midY = h*0.5, leftX=w*0.27, rightX=w*0.73;
+  const slide = stage(t,0,0.3);
+  ctx.strokeStyle="#3a3a45"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(w/2,h*0.2); ctx.lineTo(w/2,h*0.85); ctx.stroke();
+  ctx.fillStyle="#8888a0"; ctx.font=`bold ${Math.max(12,w/28)}px sans-serif`; ctx.textAlign='center';
+  ctx.fillText("VS", w/2, midY);
+  drawEntityBox(ctx, leftX-(1-slide)*40, midY-h*0.14, w*0.36, h*0.14, "#38bdf8", visual.left_entity||"A");
+  drawEntityBox(ctx, rightX+(1-slide)*40, midY-h*0.14, w*0.36, h*0.14, "#E8432F", visual.right_entity||"B");
+  if(t>0.3){
+    ctx.fillStyle="#e2e8f0"; ctx.font=`${Math.max(9,w/46)}px sans-serif`; ctx.textAlign='center';
+    wrapText(ctx, visual.left_detail||"", leftX, midY+h*0.12, w*0.36, 16);
+    wrapText(ctx, visual.right_detail||"", rightX, midY+h*0.12, w*0.36, 16);
+  }
+}
+
+/* ---- TIMELINE: real chronological stages ---- */
+function renderTimeline(ctx, w, h, visual, t){
+  const stages_ = (visual.stages && visual.stages.length ? visual.stages : ["Event"]).slice(0,6);
+  const n = stages_.length, y = h*0.56;
+  ctx.strokeStyle='#2A2A2E'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(w*0.08,y); ctx.lineTo(w*0.92,y); ctx.stroke();
+  stages_.forEach((lab,i)=>{
+    const x = w*0.08+(w*0.84)*(i/Math.max(n-1,1));
+    const reveal = clamp01((t*n-i)*3);
+    const active = Math.floor(t*n)%n===i;
+    ctx.globalAlpha = 0.3+0.7*reveal;
+    ctx.fillStyle = active?'#4FD1C5':'#555560';
+    ctx.beginPath(); ctx.arc(x,y,active?8:5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#e2e8f0'; ctx.font=`${Math.max(9,w/40)}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText(humanizeLabel(lab), x, y-(i%2===0?h*0.07:-h*0.07));
+    ctx.globalAlpha=1;
+  });
+}
+
+/* ---- MATHEMATICAL: equation with variables revealed progressively ---- */
+function renderMathematical(ctx, w, h, visual, t){
+  ctx.fillStyle="#4FD1C5"; ctx.font=`bold ${Math.max(20,w/14)}px monospace`; ctx.textAlign='center';
+  ctx.fillText(visual.equation || "", w/2, h*0.36);
+  const vars = (visual.variables && visual.variables.length ? visual.variables : []);
+  const n = vars.length;
+  vars.forEach((v,i)=>{
+    const reveal = stage(t, 0.3 + i*(0.5/Math.max(n,1)), 0.3 + (i+1)*(0.5/Math.max(n,1)));
+    ctx.globalAlpha = reveal;
+    ctx.fillStyle="#facc15"; ctx.font=`bold ${Math.max(11,w/38)}px monospace`; ctx.textAlign='left';
+    ctx.fillText(v.symbol||"", w*0.22, h*0.52+i*h*0.09);
+    ctx.fillStyle="#e2e8f0"; ctx.font=`${Math.max(10,w/44)}px sans-serif`;
+    ctx.fillText(v.meaning||"", w*0.32, h*0.52+i*h*0.09);
+    ctx.globalAlpha = 1;
+  });
+  if(t>0.85 && visual.example_line){
+    ctx.fillStyle="#8a8a96"; ctx.font=`${Math.max(9,w/50)}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText(visual.example_line, w/2, h*0.9);
+  }
+}
+
+/* ---- PARTICLE SYSTEM: generic labeled flow of many small moving particles ---- */
+function renderParticleSystem(ctx, w, h, visual, t){
+  const fromLabel = visual.from_label || "Source";
+  const toLabel = visual.to_label || "Destination";
+  const particleLabel = visual.particle_label || "Particles";
+  const y1=h*0.3, y2=h*0.72, cx=w/2;
+  drawEntityBox(ctx, cx, y1, w*0.4, h*0.13, "#38bdf8", fromLabel);
+  drawEntityBox(ctx, cx, y2, w*0.4, h*0.13, "#10b981", toLabel);
+  ctx.fillStyle="#facc15";
+  for(let i=0;i<14;i++){
+    const p = (t + i/14) % 1;
+    const px = cx + Math.sin(i*13.7)*w*0.12;
+    const py = y1+h*0.09 + p*(y2-y1-h*0.18);
+    ctx.beginPath(); ctx.arc(px,py,Math.max(2,w/220),0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle="#e2e8f0"; ctx.font=`${Math.max(9,w/48)}px sans-serif`; ctx.textAlign='center';
+  ctx.fillText(humanizeLabel(particleLabel), cx, (y1+y2)/2);
+}
+
+/* ---- STORY MODE ----------------------------------------------------------
+   A scoped, canvas-native answer to "persistent AI characters": not
+   generated character art (that needs a paid image/video model this app
+   deliberately doesn't use), but simple, deterministic vector figures that
+   stay visually IDENTICAL every time the same character id appears,
+   anywhere in the lesson — same color, same construction — because the
+   color is derived from a hash of the id rather than trusted to arrive
+   consistently from the AI. Each story_scene is a mini shot list ("beats"):
+   the scene's real (audio-driven) duration is split evenly across beats,
+   and each beat is a discrete staged moment — an environment, an optional
+   environmental event, and 1+ characters with a position/action/expression
+   — instead of one static diagram sitting under a whole paragraph of
+   narration. This is the direct, honest-scope implementation of the spec's
+   "what should the viewer SEE happening" for narrative content. */
+
+const CHARACTER_PALETTE = ["#38BDF8","#2DD4BF","#F59E0B","#A78BFA","#F472B6","#34D399","#FB923C"];
+function colorForCharacter(id){
+  const s = String(id || "character");
+  let hash = 0;
+  for(let i=0;i<s.length;i++){ hash = (hash*31 + s.charCodeAt(i)) >>> 0; }
+  return CHARACTER_PALETTE[hash % CHARACTER_PALETTE.length];
+}
+
+const STORY_POSITION_X = { left:0.14, center_left:0.34, center:0.5, center_right:0.66, right:0.86 };
+
+/* Keyword-driven backdrop: since the AI writes a free-text environment
+   description rather than picking from a fixed enum, the backdrop is built
+   from whatever location/time-of-day words actually appear in it — robust
+   to phrasing the way a fixed lookup table wouldn't be. */
+function pickBackdrop(environment){
+  const e = (environment || "").toLowerCase();
+  // Token-based startsWith matching: plain .includes() is too permissive
+  // (e.g. "street" contains the substring "tree", wrongly triggering tree
+  // props), while \b-anchored regex is too strict (it doesn't match
+  // "daytime" against /\bday\b/, since there's no boundary between 'y' and
+  // 't'). Splitting into whole tokens and checking startsWith gets both
+  // right: "daytime"/"nighttime" match their root word, "street" does not
+  // spuriously match "tree".
+  const tokens = e.split(/[^a-z]+/).filter(Boolean);
+  const has = (...words) => words.some(word => tokens.some(tok => tok.startsWith(word)));
+  let sky = ["#1e293b", "#0f172a"];
+  if(has("day","morning","noon","daylight")) sky = ["#38BDF8", "#0f172a"];
+  else if(has("evening","sunset","dusk")) sky = ["#f59e0b", "#1e1b2e"];
+  else if(has("storm","dark","night")) sky = ["#334155", "#0f172a"];
+  const indoor = has("indoor","workshop","room","inside","lab","house","kitchen");
+  const props = [];
+  if(has("village","town","street","market")) props.push("huts");
+  if(indoor) props.push("indoor");
+  if(has("mountain","hill","peak")) props.push("mountains");
+  if(has("forest","tree","woods","jungle")) props.push("trees");
+  if(!props.length) props.push("generic");
+  return { sky, groundColor: indoor ? "#242429" : "#16241a", props };
+}
+
+function drawBackdrop(ctx, w, h, environment){
+  const { sky, groundColor, props } = pickBackdrop(environment);
+  const groundY = h*0.78;
+  const grad = ctx.createLinearGradient(0,0,0,groundY);
+  grad.addColorStop(0, sky[0]); grad.addColorStop(1, sky[1]);
+  ctx.fillStyle = grad; ctx.fillRect(0,0,w,groundY);
+  ctx.fillStyle = groundColor; ctx.fillRect(0, groundY, w, h-groundY);
+
+  ctx.save(); ctx.globalAlpha = 0.55;
+  if(props.includes("mountains")){
+    ctx.fillStyle = "#1e293b";
+    [0.15, 0.32, 0.5].forEach((cx,i)=>{
+      ctx.beginPath();
+      ctx.moveTo(w*cx - w*0.09, groundY); ctx.lineTo(w*cx, groundY-h*(0.18+0.05*i)); ctx.lineTo(w*cx+w*0.09, groundY);
+      ctx.closePath(); ctx.fill();
+    });
+  }
+  if(props.includes("trees")){
+    ctx.fillStyle = "#14532d";
+    [0.78,0.85,0.92].forEach((cx)=>{
+      ctx.fillRect(w*cx-2, groundY-h*0.09, 4, h*0.09);
+      ctx.beginPath(); ctx.arc(w*cx, groundY-h*0.11, w*0.025, 0, Math.PI*2); ctx.fill();
+    });
+  }
+  if(props.includes("huts")){
+    ctx.fillStyle = "#334155"; ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth=1.5;
+    [0.1, 0.28].forEach((cx)=>{
+      const bw=w*0.1, bh=h*0.12;
+      ctx.fillRect(w*cx-bw/2, groundY-bh, bw, bh); ctx.strokeRect(w*cx-bw/2, groundY-bh, bw, bh);
+      ctx.beginPath(); ctx.moveTo(w*cx-bw*0.65, groundY-bh); ctx.lineTo(w*cx, groundY-bh-h*0.08); ctx.lineTo(w*cx+bw*0.65, groundY-bh);
+      ctx.closePath(); ctx.fillStyle="#E8432F"; ctx.fill(); ctx.fillStyle="#334155";
+    });
+  }
+  if(props.includes("indoor")){
+    ctx.fillStyle="#3f3f46"; ctx.fillRect(w*0.68, groundY-h*0.16, w*0.22, h*0.16);
+    ctx.strokeStyle="rgba(255,255,255,0.3)"; ctx.lineWidth=1.5; ctx.strokeRect(w*0.68, groundY-h*0.16, w*0.22, h*0.16);
+    ctx.fillStyle="#7dd3fc"; ctx.globalAlpha=0.35; ctx.fillRect(w*0.1, groundY-h*0.3, w*0.12, h*0.14); ctx.globalAlpha=0.55;
+  }
+  ctx.restore();
+  ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,groundY); ctx.lineTo(w,groundY); ctx.stroke();
+  return groundY;
+}
+
+/* Keyword-triggered environmental effects — deliberately a small, honest
+   set rather than an attempt at general "generate any effect": each one is
+   a real, simple, legible canvas animation rather than a decorative label. */
+function drawEnvironmentEvent(ctx, w, h, eventStr, localT){
+  const e = (eventStr || "").toLowerCase();
+  if(!e) return { shakeX: 0, shakeY: 0 };
+  if(/cloud|storm/.test(e)){
+    ctx.save(); ctx.globalAlpha = Math.min(1, localT*1.5) * 0.6; ctx.fillStyle = "#1e293b";
+    for(let i=0;i<3;i++){
+      const cx = w*(0.2+i*0.28) - localT*w*0.06;
+      ctx.beginPath(); ctx.ellipse(cx, h*(0.12+i*0.04), w*0.09, h*0.035, 0, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  if(/fire|flame|burn/.test(e)){
+    ctx.save();
+    for(let i=0;i<6;i++){
+      const bx = w*(0.3+i*0.08), flick = Math.sin(localT*30+i*3)*4;
+      const baseY = h*0.74, tipY = h*0.6+flick;
+      ctx.fillStyle = i%2===0 ? "#f59e0b" : "#E8432F";
+      ctx.globalAlpha = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(bx-7, baseY);
+      ctx.quadraticCurveTo(bx-9+flick, (baseY+tipY)/2, bx, tipY);
+      ctx.quadraticCurveTo(bx+9+flick, (baseY+tipY)/2, bx+7, baseY);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  if(/glow|light/.test(e)){
+    ctx.save();
+    const g = ctx.createRadialGradient(w/2,h*0.4,0, w/2,h*0.4, w*0.3);
+    g.addColorStop(0, `rgba(250,204,21,${0.35*Math.min(1,localT*2)})`); g.addColorStop(1, "rgba(250,204,21,0)");
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+    ctx.restore();
+  }
+  if(/flash|impact|explosion/.test(e)){
+    const burst = Math.max(0, 1 - localT*3);
+    if(burst > 0){
+      ctx.save(); ctx.globalAlpha = burst;
+      const g = ctx.createRadialGradient(w/2,h*0.45,0, w/2,h*0.45, w*0.4*burst+w*0.05);
+      g.addColorStop(0, "rgba(255,255,255,0.9)"); g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      ctx.restore();
+    }
+  }
+  if(/wind|breeze/.test(e)){
+    ctx.save(); ctx.strokeStyle = "rgba(226,232,240,0.35)"; ctx.lineWidth = 2*(Math.min(w,h)/960);
+    for(let i=0;i<5;i++){
+      const streakY = h*(0.15+i*0.06);
+      const streakX = ((localT*1.3 + i*0.2) % 1) * w*1.2 - w*0.1;
+      ctx.beginPath(); ctx.moveTo(streakX, streakY); ctx.lineTo(streakX-w*0.08, streakY+h*0.01); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if(/rain/.test(e)){
+    ctx.save(); ctx.strokeStyle = "rgba(148,197,255,0.5)"; ctx.lineWidth = 1.5;
+    for(let i=0;i<24;i++){
+      const dropX = (i*47 % 100)/100 * w;
+      const dropY = ((localT*3 + i*0.11) % 1) * h*0.8;
+      ctx.beginPath(); ctx.moveTo(dropX, dropY); ctx.lineTo(dropX-4, dropY+14); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if(/smoke|dust/.test(e)){
+    ctx.save();
+    for(let i=0;i<4;i++){
+      const px = w*(0.35+i*0.1);
+      const rise = localT*h*0.3;
+      const puffR = (14+i*4) * (Math.min(w,h)/960) * (0.6+localT*0.8);
+      ctx.globalAlpha = Math.max(0, 0.35 - localT*0.3);
+      ctx.fillStyle = "#9ca3af";
+      ctx.beginPath(); ctx.arc(px + Math.sin(localT*4+i)*8, h*0.68-rise, puffR, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  if(/crowd/.test(e)){
+    ctx.save(); ctx.globalAlpha = 0.5;
+    for(let i=0;i<6;i++){
+      const cx = w*(0.55+i*0.06), cy = h*0.72, bob = Math.sin(localT*Math.PI*4+i)*2;
+      ctx.fillStyle = "#334155";
+      ctx.beginPath(); ctx.arc(cx, cy-16+bob, 6, 0, Math.PI*2); ctx.fill();
+      ctx.fillRect(cx-5, cy-10+bob, 10, 16);
+    }
+    ctx.restore();
+  }
+  if(/shake|vibrat|tremor/.test(e)){
+    const amp = Math.max(0, 1-localT) * 5;
+    return { shakeX: (Math.random()-0.5)*amp, shakeY: (Math.random()-0.5)*amp };
+  }
+  return { shakeX: 0, shakeY: 0 };
+}
+
+const STORY_EXPRESSIONS = {
+  neutral:   { mouth: 0,    brow: 0 },
+  happy:     { mouth: 0.7,  brow: 0.1 },
+  concerned: { mouth: -0.3, brow: -0.2 },
+  worried:   { mouth: -0.5, brow: -0.3 },
+  urgent:    { mouth: -0.2, brow: -0.4 },
+  determined:{ mouth: -0.1, brow: -0.3 },
+  surprised: { mouth: 0,    brow: 0.4 }
+};
+
+function drawStoryCharacter(ctx, w, h, groundY, charSpec, localT){
+  const posKey = STORY_POSITION_X[charSpec.position] !== undefined ? charSpec.position : "center";
+  let x = w * STORY_POSITION_X[posKey];
+  const bodyColor = colorForCharacter(charSpec.id);
+  const scale = Math.min(w,h) / 960;
+  const headR = 26*scale, bodyH = 82*scale, bodyW = 40*scale;
+  const action = charSpec.action || "idle";
+  const entrance = ease(clamp01(localT/0.25));
+  // Which side of the frame this character is on, for direction-sensitive
+  // actions like approach/retreat (walk toward vs away from center stage).
+  const towardCenterSign = (posKey==="left"||posKey==="center_left") ? 1 : (posKey==="right"||posKey==="center_right") ? -1 : 0;
+
+  let bob = 0, lean = 0, legSwing = 0, driftFrac = 0, squashY = 1;
+  const gaitBob = (freq)=> Math.abs(Math.sin(localT*Math.PI*freq));
+  const gaitSwing = (freq)=> Math.sin(localT*Math.PI*freq);
+
+  // Locomotion
+  if(action === "idle"){ bob = gaitBob(4)*0.75*3*scale; }
+  else if(action === "walk"){ bob = gaitBob(8)*4*scale; legSwing = gaitSwing(8); driftFrac = (localT-0.5)*0.05; }
+  else if(action === "run"){ bob = gaitBob(12)*6*scale; legSwing = gaitSwing(12); lean = 0.15; driftFrac = (localT-0.5)*0.09; }
+  else if(action === "approach"){ bob = gaitBob(8)*4*scale; legSwing = gaitSwing(8); driftFrac = towardCenterSign * localT * 0.07; }
+  else if(action === "retreat"){ bob = gaitBob(8)*3.5*scale; legSwing = gaitSwing(8); driftFrac = -towardCenterSign * localT * 0.06; lean = -0.08; }
+  else if(action === "turn"){ lean = Math.sin(clamp01(localT/0.4)*Math.PI) * 0.5; }
+  else if(action === "crouch"){ squashY = 1 - ease(clamp01(localT/0.3))*0.28; }
+  else if(action === "jump"){ bob = Math.sin(Math.PI*clamp01(localT))*22*scale; }
+  else if(action === "stumble"){ lean = Math.sin(localT*Math.PI*6)*0.25*(1-localT*0.5); bob = -Math.abs(Math.sin(localT*Math.PI*3))*4*scale; }
+  // Head/face-led actions (body mostly holds, small lean communicates the beat)
+  else if(action === "look" || action === "look_at" || action === "look_away" || action === "react"){ lean = Math.sin(localT*Math.PI*2)*0.06; }
+  else if(action === "nod"){ lean = Math.sin(localT*Math.PI*6)*0.08; }
+  else if(action === "shake_head"){ lean = Math.sin(localT*Math.PI*8)*0.10; }
+  // Everything else (gesture/interaction) holds position; the arm table below carries the distinction
+  x += driftFrac * w;
+  const feetY = groundY - bob;
+  const headCY = feetY - bodyH*squashY - headR;
+  const shoulderY = feetY - bodyH*squashY*0.85;
+
+  // Arms: explicit (dx,dy) offsets per action rather than shared trig — a
+  // lookup table keeps ~20 actions each visually distinct without a long
+  // if/else chain repeating the same math with tiny variations.
+  let leftArm = { dx: -9*scale, dy: 34*scale };
+  let rightArm = { dx: 9*scale, dy: 34*scale };
+  const gestureWave = Math.sin(localT*Math.PI*10)*10*scale;
+  const ARM_POSES = {
+    walk:      ()=>({ left:{dx:-9+legSwing*9, dy:32}, right:{dx:9-legSwing*9, dy:32} }),
+    run:       ()=>({ left:{dx:-9+legSwing*11, dy:30}, right:{dx:9-legSwing*11, dy:30} }),
+    approach:  ()=>({ left:{dx:-9+legSwing*9, dy:32}, right:{dx:9-legSwing*9, dy:32} }),
+    retreat:   ()=>({ left:{dx:-9+legSwing*9, dy:32}, right:{dx:9-legSwing*9, dy:32} }),
+    point:     ()=>({ left:{dx:-9,dy:34}, right:{dx:32, dy:-22} }),
+    wave:      ()=>({ left:{dx:-9,dy:34}, right:{dx:22, dy:-30+gestureWave} }),
+    reach:     ()=>({ left:{dx:-9,dy:34}, right:{dx:36, dy:0} }),
+    grab:      ()=>({ left:{dx:-9,dy:34}, right:{dx:34, dy:2} }),
+    push:      ()=>({ left:{dx:20,dy:10}, right:{dx:34, dy:8} }),
+    pull:      ()=>({ left:{dx:22,dy:6}, right:{dx:32, dy:4} }),
+    lift:      ()=>({ left:{dx:-16,dy:-24}, right:{dx:16, dy:-24} }),
+    throw:     ()=>({ left:{dx:-9,dy:34}, right:{dx:8+gestureWave*1.4, dy:-30+localT*40} }),
+    hold:      ()=>({ left:{dx:14,dy:24}, right:{dx:-14, dy:24} }),
+    hand_over_object: ()=>({ left:{dx:-9,dy:34}, right:{dx:38, dy:-4} }),
+    use:       ()=>({ left:{dx:16,dy:28}, right:{dx:24, dy:20} }),
+    pick_up:   ()=>({ left:{dx:16,dy:28}, right:{dx:24, dy:20} }),
+    place:     ()=>({ left:{dx:16,dy:22}, right:{dx:24, dy:18} }),
+    drop:      ()=>({ left:{dx:16,dy:30}, right:{dx:20, dy:32} }),
+    inspect:   ()=>({ left:{dx:-9,dy:34}, right:{dx:20, dy:-4} }),
+    repair:    ()=>({ left:{dx:14,dy:14}, right:{dx:22+gestureWave*0.6, dy:12} }),
+    open:      ()=>({ left:{dx:-20,dy:8}, right:{dx:20+gestureWave*0.5, dy:8} }),
+    close:     ()=>({ left:{dx:-14,dy:16}, right:{dx:14, dy:16} }),
+    activate:  ()=>({ left:{dx:-9,dy:34}, right:{dx:16, dy:-10} }),
+    deactivate:()=>({ left:{dx:-9,dy:34}, right:{dx:16, dy:-6} }),
+    carry:     ()=>({ left:{dx:-18,dy:12}, right:{dx:18, dy:12} }),
+    talk:      ()=>({ left:{dx:-9,dy:34}, right:{dx:20, dy:10+gestureWave*0.6} })
+  };
+  const armFn = ARM_POSES[action];
+  if(armFn){
+    const p = armFn();
+    leftArm = { dx: p.left.dx*scale, dy: p.left.dy*scale };
+    rightArm = { dx: p.right.dx*scale, dy: p.right.dy*scale };
+  }
+
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.5, entrance);
+  ctx.translate(x, 0);
+  ctx.rotate(lean*0.15);
+
+  // legs
+  ctx.strokeStyle = "#1B1B1D"; ctx.lineWidth = 5*scale; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-bodyW*0.18, feetY-bodyH*squashY*0.42); ctx.lineTo(-bodyW*0.18 + legSwing*8*scale, feetY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bodyW*0.18, feetY-bodyH*squashY*0.42); ctx.lineTo(bodyW*0.18 - legSwing*8*scale, feetY); ctx.stroke();
+
+  ctx.strokeStyle = bodyColor; ctx.lineWidth = 6*scale; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-bodyW*0.4, shoulderY); ctx.lineTo(-bodyW*0.4 + leftArm.dx, shoulderY + leftArm.dy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bodyW*0.4, shoulderY); ctx.lineTo(bodyW*0.4 + rightArm.dx, shoulderY + rightArm.dy); ctx.stroke();
+
+  // torso
+  ctx.fillStyle = bodyColor;
+  roundRect(ctx, -bodyW/2, feetY-bodyH*squashY, bodyW, bodyH*squashY, 10*scale);
+  ctx.fill();
+
+  // head
+  ctx.beginPath(); ctx.arc(0, headCY, headR, 0, Math.PI*2);
+  ctx.fillStyle = "#F2ECDD"; ctx.fill();
+  ctx.strokeStyle = bodyColor; ctx.lineWidth = 2.5*scale; ctx.stroke();
+
+  // face
+  const expr = STORY_EXPRESSIONS[charSpec.expression] || STORY_EXPRESSIONS.neutral;
+  let gazeX = (posKey==="left"||posKey==="center_left") ? 2*scale : (posKey==="right"||posKey==="center_right") ? -2*scale : 0;
+  if(action === "look_away") gazeX *= -1.6;
+  ctx.fillStyle = "#1B1B1D";
+  ctx.beginPath(); ctx.arc(-headR*0.35+gazeX, headCY-headR*0.1, 2.6*scale, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(headR*0.35+gazeX, headCY-headR*0.1, 2.6*scale, 0, Math.PI*2); ctx.fill();
+  // eyebrows (angle communicates expression even at small size)
+  ctx.strokeStyle = "#1B1B1D"; ctx.lineWidth = 2*scale;
+  ctx.beginPath(); ctx.moveTo(-headR*0.5,headCY-headR*0.32-expr.brow*6*scale); ctx.lineTo(-headR*0.2,headCY-headR*0.32+expr.brow*6*scale); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(headR*0.2,headCY-headR*0.32+expr.brow*6*scale); ctx.lineTo(headR*0.5,headCY-headR*0.32-expr.brow*6*scale); ctx.stroke();
+  // mouth: a simple quadratic curve reads far more reliably as a smile/frown
+  // than an arc with a direction flag did (that produced the same odd
+  // near-identical shape for every expression regardless of sign).
+  if(action === "talk"){
+    const openness = (Math.sin(localT*Math.PI*16)*0.5+0.5) * 5*scale + 1.5*scale;
+    ctx.beginPath();
+    ctx.ellipse(0, headCY+headR*0.42, 5*scale, openness, 0, 0, Math.PI*2);
+    ctx.fillStyle = "#1B1B1D"; ctx.fill();
+  } else {
+    const mouthY = headCY + headR*0.34;
+    const curve = expr.mouth * headR*0.4; // positive (happy) bulges down = smile; negative bulges up = frown
+    ctx.strokeStyle = "#1B1B1D"; ctx.lineWidth = 2*scale;
+    ctx.beginPath();
+    ctx.moveTo(-headR*0.28, mouthY);
+    ctx.quadraticCurveTo(0, mouthY + curve, headR*0.28, mouthY);
+    ctx.stroke();
+  }
+
+  // name tag
+  ctx.fillStyle = COLOR.muted; ctx.font = `${Math.max(9, 11*scale)}px sans-serif`; ctx.textAlign = "center";
+  ctx.fillText(humanizeLabel(charSpec.name || charSpec.id || ""), 0, headCY-headR-8*scale);
+  ctx.restore();
+}
+
+const SHOT_ZOOM = { wide: 1.0, medium: 1.22, close_up: 1.5 };
+const PROP_KIND_COLOR = { door: "#94a3b8", machine: "#64748b", light: "#f59e0b", tool: "#a78bfa", box: "#b45309", vehicle: "#38bdf8" };
+
+// Mirrors the drift math in drawStoryCharacter for the specific actions that
+// move a character — used so "tracking" camera genuinely follows where the
+// character actually is on screen, not a separate guess at their position.
+function characterDriftFrac(action, position, localT){
+  const towardCenterSign = (position==="left"||position==="center_left") ? 1 : (position==="right"||position==="center_right") ? -1 : 0;
+  if(action === "walk") return (localT-0.5)*0.05;
+  if(action === "run") return (localT-0.5)*0.09;
+  if(action === "approach") return towardCenterSign*localT*0.07;
+  if(action === "retreat") return -towardCenterSign*localT*0.06;
+  return 0;
+}
+
+/* Camera grammar: "wide"/"medium"/"close_up" are hard-cut static framings —
+   real film cuts, not smooth zooms. "push_in"/"pull_out"/"pan_left"/
+   "pan_right"/"tracking" are genuine continuous camera MOVEMENT across the
+   beat's duration, which is what actually earns the label "cinematic" per
+   the spec — a moving camera reads completely differently from a static
+   shot that just happens to be zoomed in. */
+function computeCameraFrame(beat, w, h, localT){
+  const activeChars = beat.characters || [];
+  const avgX = ()=>{
+    const xs = activeChars.map(c => w * (STORY_POSITION_X[c.position] !== undefined ? STORY_POSITION_X[c.position] : 0.5));
+    return xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : w*0.5;
+  };
+  const cam = beat.camera;
+  if(cam === "push_in") return { zoom: 1.0 + ease(localT)*0.32, fx: avgX(), fy: h*0.58 };
+  if(cam === "pull_out") return { zoom: 1.32 - ease(localT)*0.32, fx: avgX(), fy: h*0.58 };
+  if(cam === "pan_left") return { zoom: 1.15, fx: w*(0.7 - localT*0.4), fy: h*0.55 };
+  if(cam === "pan_right") return { zoom: 1.15, fx: w*(0.3 + localT*0.4), fy: h*0.55 };
+  if(cam === "tracking"){
+    const mover = activeChars.find(c => ["walk","run","approach","retreat"].includes(c.action));
+    if(mover){
+      const baseX = w * (STORY_POSITION_X[mover.position] !== undefined ? STORY_POSITION_X[mover.position] : 0.5);
+      return { zoom: 1.18, fx: baseX + characterDriftFrac(mover.action, mover.position, localT)*w, fy: h*0.55 };
+    }
+    return { zoom: 1.15, fx: avgX(), fy: h*0.55 };
+  }
+  return { zoom: SHOT_ZOOM[cam] || 1.0, fx: avgX(), fy: h*0.58 }; // wide/medium/close_up/unset
+}
+
+function drawStoryProp(ctx, w, h, groundY, propSpec, localT){
+  const posKey = STORY_POSITION_X[propSpec.position] !== undefined ? propSpec.position : "center";
+  const x = w * STORY_POSITION_X[posKey];
+  const scale = Math.min(w,h) / 960;
+  const state = propSpec.state || "idle";
+  const kind = propSpec.kind || "box";
+  const baseColor = PROP_KIND_COLOR[kind] || "#94a3b8";
+  const entrance = ease(clamp01(localT/0.25));
+  const boxW = 70*scale, boxH = 70*scale;
+  const y = groundY - boxH/2;
+
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.6, entrance);
+
+  if(kind === "door"){
+    const openAngle = (state === "open") ? 55 : 0;
+    ctx.strokeStyle = baseColor; ctx.lineWidth = 4*scale;
+    roundRect(ctx, x-boxW/2, groundY-boxH*1.4, boxW, boxH*1.4, 4*scale); ctx.stroke();
+    ctx.save();
+    ctx.translate(x-boxW/2, groundY);
+    ctx.rotate(-openAngle*Math.PI/180 * ease(clamp01(localT/0.4)));
+    ctx.fillStyle = baseColor; ctx.fillRect(0, -boxH*1.35, boxW*0.9, boxH*1.3);
+    ctx.restore();
+  } else if(kind === "machine"){
+    roundRect(ctx, x-boxW/2, y-boxH/2, boxW, boxH, 8*scale);
+    ctx.fillStyle = "#334155"; ctx.fill(); ctx.strokeStyle=baseColor; ctx.lineWidth=2*scale; ctx.stroke();
+    const on = state === "on" || state === "repaired" || state === "moving";
+    const broken = state === "broken";
+    ctx.beginPath(); ctx.arc(x, y-boxH*0.25, 7*scale, 0, Math.PI*2);
+    ctx.fillStyle = broken ? "#EF4444" : (on ? "#22C55E" : "#555560"); ctx.fill();
+    if(on){
+      ctx.save();
+      ctx.translate(x, y+boxH*0.12);
+      ctx.rotate(localT*Math.PI*10);
+      ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 3*scale;
+      ctx.beginPath(); ctx.moveTo(-14*scale,0); ctx.lineTo(14*scale,0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,-14*scale); ctx.lineTo(0,14*scale); ctx.stroke();
+      ctx.restore();
+    }
+  } else if(kind === "light"){
+    const on = state === "on";
+    if(on){
+      const g = ctx.createRadialGradient(x,y,0, x,y, boxW*0.9);
+      g.addColorStop(0, "rgba(250,204,21,0.55)"); g.addColorStop(1,"rgba(250,204,21,0)");
+      ctx.fillStyle = g; ctx.fillRect(x-boxW*0.9,y-boxW*0.9,boxW*1.8,boxW*1.8);
+    }
+    ctx.beginPath(); ctx.arc(x,y,14*scale,0,Math.PI*2);
+    ctx.fillStyle = on ? "#facc15" : "#555560"; ctx.fill();
+  } else if(kind === "vehicle"){
+    const moving = state === "moving";
+    const vx = x + (moving ? (localT-0.5)*w*0.1 : 0);
+    roundRect(ctx, vx-boxW*0.7, groundY-boxH*0.55, boxW*1.4, boxH*0.5, 10*scale);
+    ctx.fillStyle = baseColor; ctx.fill();
+    ctx.fillStyle = "#1B1B1D";
+    ctx.beginPath(); ctx.arc(vx-boxW*0.4, groundY, 10*scale, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(vx+boxW*0.4, groundY, 10*scale, 0, Math.PI*2); ctx.fill();
+  } else { // box / tool / generic
+    const openFrac = state === "open" ? 1 : 0;
+    roundRect(ctx, x-boxW/2, y-boxH/2, boxW, boxH, 6*scale);
+    ctx.fillStyle = baseColor; ctx.fill();
+    ctx.save();
+    ctx.translate(x-boxW/2, y-boxH/2);
+    ctx.rotate(-openFrac*0.9*ease(clamp01(localT/0.4)));
+    ctx.fillStyle = "#1B1B1D"; ctx.fillRect(0,-6*scale, boxW, 6*scale);
+    ctx.restore();
+  }
+
+  ctx.fillStyle = COLOR.muted; ctx.font = `${Math.max(8,10*scale)}px sans-serif`; ctx.textAlign="center";
+  ctx.fillText(humanizeLabel(propSpec.label || propSpec.id || kind), x, groundY+16*scale);
+  ctx.restore();
+}
+
+function renderStoryScene(ctx, w, h, scene, visual, t){
+  const beats = (visual.beats && visual.beats.length ? visual.beats : [{characters:[]}]).slice(0,8);
+  const n = beats.length;
+  const rawIndex = t*n;
+  const beatIndex = Math.min(Math.floor(rawIndex), n-1);
+  const localT = clamp01(rawIndex - beatIndex);
+  const beat = beats[beatIndex];
+
+  const cam = computeCameraFrame(beat, w, h, localT);
+  let cameraApplied = false;
+  if(cam.zoom !== 1.0){
+    ctx.save();
+    ctx.translate(cam.fx, cam.fy);
+    ctx.scale(cam.zoom, cam.zoom);
+    ctx.translate(-cam.fx, -cam.fy);
+    cameraApplied = true;
+  }
+
+  const groundY = drawBackdrop(ctx, w, h, visual.environment);
+  const shake = drawEnvironmentEvent(ctx, w, h, beat.environmentEvent, localT);
+  if(shake.shakeX || shake.shakeY){ ctx.save(); ctx.translate(shake.shakeX, shake.shakeY); }
+
+  (beat.props || []).forEach(propSpec=>{
+    drawStoryProp(ctx, w, h, groundY, propSpec, localT);
+  });
+
+  (beat.characters || []).forEach(charSpec=>{
+    const frame = useAICharacterArt ? pickCharacterFrame(charSpec, localT) : null;
+    if(frame){
+      drawStoryCharacterImageFrame(ctx, w, h, groundY, charSpec, localT, frame);
+    } else {
+      drawStoryCharacter(ctx, w, h, groundY, charSpec, localT); // vector fallback — used when art generation is off, still loading, or failed
+    }
+  });
+
+  if(shake.shakeX || shake.shakeY){ ctx.restore(); }
+  if(cameraApplied) ctx.restore();
+}
+
+/* ---- AI-generated character art ------------------------------------------
+   Real generated portraits via Cloudflare Workers AI's free image model
+   (same account/quota already used for /analyze — no separate cost). This
+   is genuinely different from the vector figures above: an actual
+   AI-illustrated character, not colored shapes. The honest limits, stated
+   up front rather than discovered later:
+   - Each character gets a small, fixed set of POSES (idle per-expression,
+     two walk-cycle frames, one talk frame) generated once and reused — this
+     is classic 2-4-frame sprite animation (how cheap traditional 2D
+     animation actually works), not continuous limb articulation or lip-sync.
+   - Separate generations of the "same" character are NOT guaranteed
+     pixel-consistent the way a real character rig would be — a text-to-image
+     model doesn't have true multi-image identity conditioning. The
+     description field keeps them close, but some drift between poses is
+     possible. This is a genuine limitation of using a free, no-signup image
+     model rather than a dedicated character-consistency pipeline.
+   - Generation takes real time and spends real (though free) Workers AI
+     quota, so it only runs when the person explicitly turns it on, and only
+     for the Studio's real Preview/Render — never for instant storyboard
+     thumbnails. */
+
+const characterPoseCache = {}; // key -> {status:'pending'|'ready'|'error', img}
+
+function buildPosePrompt(charSpec, poseKind, expression){
+  const desc = charSpec.description || charSpec.name || charSpec.id || "a person";
+  // Solid, unusual, saturated green background is the chroma-key target —
+  // easy to key out reliably without also erasing skin tones or clothing.
+  const style = "simple flat 2D vector illustration, clean bold outlines, full body visible head to feet, centered in frame, solid bright green background (#00ff00), no text, no watermark, no signature";
+  if(poseKind === "walkA") return `${desc}, walking pose with left leg stepping forward and arms swinging, ${style}`;
+  if(poseKind === "walkB") return `${desc}, walking pose with right leg stepping forward and arms swinging, ${style}`;
+  if(poseKind === "talk") return `${desc}, standing pose, mouth open mid-speech, ${style}`;
+  return `${desc}, standing idle pose, arms relaxed at sides, ${expression || "neutral"} facial expression, ${style}`;
+}
+
+function loadImageFromBlob(blob){
+  return new Promise((resolve, reject)=>{
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = ()=>reject(new Error("generated image failed to decode"));
+    img.src = url;
+  });
+}
+
+// Removes the solid green background so the character can be drawn over the
+// scene's own backdrop instead of sitting in a green box.
+function chromaKeyToTransparent(img){
+  return new Promise((resolve)=>{
+    const off = document.createElement('canvas');
+    off.width = img.naturalWidth || img.width; off.height = img.naturalHeight || img.height;
+    const octx = off.getContext('2d');
+    octx.drawImage(img, 0, 0);
+    const data = octx.getImageData(0, 0, off.width, off.height);
+    const px = data.data;
+    for(let i=0;i<px.length;i+=4){
+      const dr = px[i]-0, dg = px[i+1]-255, db = px[i+2]-0; // key color: pure green
+      if(Math.sqrt(dr*dr+dg*dg+db*db) < 90){ px[i+3] = 0; }
+    }
+    octx.putImageData(data, 0, 0);
+    const outImg = new Image();
+    outImg.onload = ()=>resolve(outImg);
+    outImg.src = off.toDataURL();
+  });
+}
+
+async function ensureCharacterPose(key, charSpec, poseKind, expression){
+  if(characterPoseCache[key] && characterPoseCache[key].status !== undefined) return characterPoseCache[key];
+  characterPoseCache[key] = { status: 'pending', img: null };
+  try{
+    const prompt = buildPosePrompt(charSpec, poseKind, expression);
+    const resp = await fetch(`${proxyBase}/generate-image`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt })
+    });
+    if(!resp.ok){
+      let msg = `status ${resp.status}`;
+      try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){}
+      throw new Error(msg);
+    }
+    const blob = await resp.blob();
+    const rawImg = await loadImageFromBlob(blob);
+    const transparentImg = await chromaKeyToTransparent(rawImg);
+    characterPoseCache[key] = { status: 'ready', img: transparentImg };
+  }catch(err){
+    console.error('character art generation failed for', key, err);
+    characterPoseCache[key] = { status: 'error', img: null };
+  }
+  return characterPoseCache[key];
+}
+
+/* Scans every story_scene beat across the whole lesson, collects the
+   distinct (character, pose) pairs actually needed, and generates each
+   exactly once — mirrors ensureSceneAudio's "fetch everything up front so
+   playback/recording is never blocked on a network call" pattern. */
+async function ensureCharacterImages(onProgress){
+  const needed = new Map();
+  scenes.forEach(scene=>{
+    if(!(scene.visual && scene.visual.kind === "story_scene")) return;
+    (scene.visual.beats||[]).forEach(beat=>{
+      (beat.characters||[]).forEach(c=>{
+        if(!c.id) return;
+        const action = c.action || "idle";
+        const expr = c.expression || "neutral";
+        const baseKey = `${c.id}__base__${expr}`;
+        if(!needed.has(baseKey)) needed.set(baseKey, {charSpec:c, poseKind:"base", expression:expr});
+        if(action === "walk" || action === "run"){
+          const kA = `${c.id}__walkA`, kB = `${c.id}__walkB`;
+          if(!needed.has(kA)) needed.set(kA, {charSpec:c, poseKind:"walkA"});
+          if(!needed.has(kB)) needed.set(kB, {charSpec:c, poseKind:"walkB"});
+        }
+        if(action === "talk"){
+          const kT = `${c.id}__talk`;
+          if(!needed.has(kT)) needed.set(kT, {charSpec:c, poseKind:"talk"});
+        }
+      });
+    });
+  });
+  const entries = Array.from(needed.entries());
+  for(let i=0;i<entries.length;i++){
+    const [key, spec] = entries[i];
+    onProgress(i, entries.length, spec.charSpec.name || spec.charSpec.id);
+    await ensureCharacterPose(key, spec.charSpec, spec.poseKind, spec.expression);
+  }
+}
+
+// Picks which cached frame to show for a character this instant, handling
+// the walk/talk 2-frame cycles. Returns null (triggering the vector
+// fallback for just this character) if the needed frame isn't ready yet.
+function pickCharacterFrame(charSpec, localT){
+  if(!charSpec.id) return null;
+  const action = charSpec.action || "idle";
+  const baseEntry = characterPoseCache[`${charSpec.id}__base__${charSpec.expression||'neutral'}`];
+  const baseReady = baseEntry && baseEntry.status === 'ready';
+  if(action === "walk" || action === "run"){
+    const a = characterPoseCache[`${charSpec.id}__walkA`];
+    const b = characterPoseCache[`${charSpec.id}__walkB`];
+    if(a && a.status==='ready' && b && b.status==='ready'){
+      const freq = action === "run" ? 12 : 8;
+      return Math.floor(localT*freq)%2===0 ? a.img : b.img;
+    }
+    return baseReady ? baseEntry.img : null;
+  }
+  if(action === "talk"){
+    const t = characterPoseCache[`${charSpec.id}__talk`];
+    if(t && t.status==='ready' && baseReady){
+      return Math.floor(localT*10)%2===0 ? baseEntry.img : t.img;
+    }
+    return baseReady ? baseEntry.img : null;
+  }
+  return baseReady ? baseEntry.img : null;
+}
+
+function drawStoryCharacterImageFrame(ctx, w, h, groundY, charSpec, localT, img){
+  const posKey = STORY_POSITION_X[charSpec.position] !== undefined ? charSpec.position : "center";
+  let x = w * STORY_POSITION_X[posKey];
+  const scale = Math.min(w,h) / 960;
+  const action = charSpec.action || "idle";
+  let bob = 0, driftX = 0;
+  if(action === "idle"){ bob = Math.sin(localT*Math.PI*4)*3*scale; }
+  else if(action === "walk"){ bob = Math.abs(Math.sin(localT*Math.PI*8))*4*scale; driftX = (localT-0.5)*w*0.05; }
+  else if(action === "run"){ bob = Math.abs(Math.sin(localT*Math.PI*12))*6*scale; driftX = (localT-0.5)*w*0.09; }
+  x += driftX;
+
+  const entrance = ease(clamp01(localT/0.25));
+  const targetH = 210*scale;
+  const naturalW = img.naturalWidth || img.width || 1, naturalH = img.naturalHeight || img.height || 1;
+  const targetW = targetH * (naturalW/naturalH);
+  const feetY = groundY - bob;
+
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.5, entrance);
+  ctx.drawImage(img, x-targetW/2, feetY-targetH, targetW, targetH);
+  ctx.fillStyle = COLOR.muted; ctx.font = `${Math.max(9, 11*scale)}px sans-serif`; ctx.textAlign = "center";
+  ctx.fillText(humanizeLabel(charSpec.name || charSpec.id || ""), x, feetY-targetH-8*scale);
+  ctx.restore();
+}
+
+/* ---- shared drawing primitives ---- */
+function drawEntityBox(ctx, x, y, width, height, color, text){
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  roundRect(ctx, x-width/2, y-height/2, width, height, 10);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#0f172a";
+  ctx.font = `bold ${Math.max(10, width/16)}px sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  wrapText(ctx, humanizeLabel(text), x, y, width*0.9, height*0.32);
+  ctx.textBaseline = "alphabetic";
+  ctx.restore();
+}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function wrapText(ctx,text,x,y,maxWidth,lineHeight){
+  const words=text.split(' '); let line=''; const lines=[];
+  words.forEach(word=>{
+    const test=line+word+' ';
+    if(ctx.measureText(test).width>maxWidth && line){ lines.push(line); line=word+' '; } else { line=test; }
+  });
+  lines.push(line);
+  const startY = y - (lines.length-1)*lineHeight/2;
+  lines.forEach((l,i)=> ctx.fillText(l.trim(), x, startY + i*lineHeight));
+}
+
+/* ---------------- studio: voices ---------------- */
+document.getElementById('toStudioBtn').addEventListener('click', ()=>{
+  document.getElementById('studioSection').style.display='block';
+  document.getElementById('nav3').classList.add('on');
+  document.getElementById('studioSection').scrollIntoView({behavior:'smooth'});
+  drawIdleStage();
+  renderStyleFrames();
+});
+
+/* ---- style-frame preview: render one representative frame (mid-progress,
+   t=0.5) per distinct visual kind actually used in this storyboard, so the
+   look can be sanity-checked before spending time on the full export. This
+   is a real, immediate check — not a full automated visual-quality grade,
+   which would need a human or a vision-capable model actually looking at
+   the frames. */
+function renderStyleFrames(){
+  const strip = document.getElementById('styleFrameStrip');
+  const thumbs = document.getElementById('styleFrameThumbs');
+  if(!strip || !thumbs || !scenes.length) return;
+  thumbs.innerHTML = '';
+  const seenKinds = new Set();
+  const representative = [];
+  scenes.forEach(scene=>{
+    const kind = (scene.visual && scene.visual.kind) || 'process';
+    if(!seenKinds.has(kind)){ seenKinds.add(kind); representative.push(scene); }
+  });
+  representative.forEach(scene=>{
+    const canvas = document.createElement('canvas');
+    canvas.width = 176; canvas.height = 99;
+    canvas.style.borderRadius = '6px';
+    canvas.style.border = '1px solid #2a2a2e';
+    const ctx = canvas.getContext('2d');
+    drawScene(ctx, 176, 99, scene, 0.5, false);
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:10px;color:#8a8a96;text-align:center;margin-top:2px;';
+    label.textContent = (scene.visual && scene.visual.kind) || 'process';
+    const wrap = document.createElement('div');
+    wrap.appendChild(canvas); wrap.appendChild(label);
+    thumbs.appendChild(wrap);
+  });
+  strip.style.display = 'block';
+}
+
+const connectBtn = document.getElementById('connectBtn');
+const keyStatus = document.getElementById('keyStatus');
+const voiceListEl = document.getElementById('voiceList');
+const renderBtn = document.getElementById('renderBtn');
+
+document.getElementById('robotToggle').addEventListener('change', e=>{ roboticEffect = e.target.checked; });
+document.getElementById('captionsToggle').addEventListener('change', e=>{ showCaptions = e.target.checked; drawIdleStage(); });
+document.getElementById('aiCharacterArtToggle').addEventListener('change', e=>{ useAICharacterArt = e.target.checked; drawIdleStage(); });
+
+connectBtn.addEventListener('click', connectProxy);
+
+async function connectProxy(){
+  const url = document.getElementById('apiKeyInput').value.trim().replace(/\/$/, '');
+  if(!url){ keyStatus.textContent = "Paste your Worker URL first."; keyStatus.className='key-status err'; return; }
+  proxyBase = url;
+  keyStatus.textContent = "Connecting…"; keyStatus.className='key-status';
+  try{
+    const resp = await fetch(`${proxyBase}/voices`); // lightweight reachability check for the analyze proxy
+    if(!resp.ok) throw new Error('proxy returned ' + resp.status);
+    keyStatus.textContent = `Connected.`;
+    keyStatus.className = 'key-status ok';
+    refreshAnalyzeState();
+    renderBtn.disabled = scenes.length === 0;
+  }catch(err){
+    console.error(err);
+    keyStatus.textContent = "Couldn't connect — " + err.message;
+    keyStatus.className = 'key-status err';
+  }
+}
+
+buildVoiceList(); // voice list is static and known up front — no async loading needed
+
+function buildVoiceList(){
+  voiceListEl.innerHTML = '';
+  availableVoices.forEach((v,i)=>{
+    const row = document.createElement('div');
+    row.className = 'voice-row' + (i===0 ? ' sel':'');
+    row.innerHTML = `<span>${v.name}</span><button type="button">▶ sample</button>`;
+    row.addEventListener('click', (e)=>{
+      if(e.target.tagName === 'BUTTON') return;
+      selectedVoiceId = v;
+      document.querySelectorAll('.voice-row').forEach(el=>el.classList.remove('sel'));
+      row.classList.add('sel');
+    });
+    row.querySelector('button').addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const btn = e.target; btn.textContent = '…';
+      try{
+        const buf = await fetchTTSAudio("Hi, I'll be narrating your video.", v.opts);
+        await playRawBuffer(buf);
+      }catch(err){ console.error(err); }
+      btn.textContent = '▶ sample';
+    });
+    voiceListEl.appendChild(row);
+  });
+  selectedVoiceId = availableVoices[0];
+}
+
+/* ---- core TTS: fetch real generated audio (via Puter.js, free & unlimited) and decode it ---- */
+async function fetchTTSAudio(text, voiceOpts){
+  const audioEl = await puter.ai.txt2speech(text, voiceOpts);
+  const resp = await fetch(audioEl.src);
+  if(!resp.ok) throw new Error('TTS fetch failed: ' + resp.status);
+  const arrayBuf = await resp.arrayBuffer();
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return await audioCtx.decodeAudioData(arrayBuf.slice(0));
+}
+
+function playRawBuffer(buffer){
+  return new Promise(resolve=>{
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(audioCtx.destination);
+    src.onended = resolve;
+    src.start();
+  });
+}
+
+/* fetch (or reuse cached) audio for every scene, in order, with progress reporting.
+   Each scene's cache key is a hash of its own current narration+voice — computed
+   fresh every call, so a scene whose narration or voice changed since the last
+   fetch automatically misses the cache and gets regenerated, with no manual
+   invalidation step required anywhere else in the app. */
+async function ensureSceneAudio(onProgress){
+  for(let i=0;i<scenes.length;i++){
+    const scene = scenes[i];
+    const key = await audioHashFor(scene);
+    scene._audioKey = key;
+    if(!sceneAudioCache[key]){
+      onProgress(i, 'fetching');
+      const buffer = await fetchTTSAudio(scene.narration, selectedVoiceId.opts);
+      sceneAudioCache[key] = { buffer, duration: buffer.duration };
+    }
+    onProgress(i, 'ready');
+  }
+}
+
+/* play one scene's audio buffer through given destination node(s) (speakers, recorder, or both),
+   animating the canvas in lockstep with real elapsed time against the buffer's real duration */
+function playSceneBuffer(scene, destinations){
+  return new Promise((resolve, reject)=>{
+    const cached = sceneAudioCache[scene._audioKey];
+    if(!cached) return reject(new Error('missing audio for scene ' + (scene.id!==undefined?scene.id:'?') + ' — run ensureSceneAudio first'));
+    caption.textContent = scene.narration;
+
+    const src = audioCtx.createBufferSource();
+    src.buffer = cached.buffer;
+
+    let chain = src;
+    if(roboticEffect){ chain = applyRobotEffect(src); }
+    destinations.forEach(dest => chain.connect(dest));
+
+    const duration = cached.duration;
+    const start = audioCtx.currentTime;
+    let raf;
+    function loop(){
+      const elapsed = audioCtx.currentTime - start;
+      const t = Math.min(elapsed/duration, 1);
+      drawScene(sctx, 960, 540, scene, t, true);
+      if(t < 1){ raf = requestAnimationFrame(loop); }
+    }
+    loop();
+
+    src.onended = ()=>{ cancelAnimationFrame(raf); resolve(); };
+    src.start();
+  });
+}
+
+/* a simple ring-modulator: multiplies the voice by a low-frequency tone for a robotic timbre */
+function applyRobotEffect(sourceNode){
+  const modulator = audioCtx.createOscillator();
+  modulator.frequency.value = 35;
+  const modGain = audioCtx.createGain();
+  modulator.connect(modGain.gain);
+  modGain.gain.value = 0;
+  const ring = audioCtx.createGain();
+  sourceNode.connect(ring);
+  modulator.start();
+  const now = audioCtx.currentTime;
+  const dur = sourceNode.buffer.duration;
+  const steps = Math.floor(dur * 70);
+  for(let i=0;i<=steps;i++){
+    const tt = now + (i/70);
+    const v = 0.55 + 0.45*Math.sin(2*Math.PI*35*(i/70));
+    ring.gain.setValueAtTime(Math.max(0.15,v), tt);
+  }
+  return ring;
+}
+
+/* ---------------- stage / preview ---------------- */
+const stageCanvas = document.getElementById('stageCanvas');
+const sctx = stageCanvas.getContext('2d');
+const caption = document.getElementById('caption');
+
+function drawIdleStage(){
+  sctx.clearRect(0,0,960,540);
+  sctx.fillStyle='#0E0E10'; sctx.fillRect(0,0,960,540);
+  if(scenes[0]) drawScene(sctx,960,540,scenes[0], 0.5, true);
+  caption.textContent = scenes[0] ? scenes[0].narration : '';
+}
+
+/* ---------------- preview ---------------- */
+let previewing = false;
+document.getElementById('previewBtn').addEventListener('click', async ()=>{
+  if(previewing) return;
+  if(!selectedVoiceId){ renderStatus.textContent = "Pick a voice first (left panel)."; return; }
+  previewing = true;
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  document.getElementById('recLabel').textContent = 'PREVIEW';
+  try{
+    if(useAICharacterArt){
+      renderStatus.textContent = "Generating character art…";
+      await ensureCharacterImages((i,total,name)=>{ renderStatus.textContent = `Generating character art ${i+1}/${total} (${humanizeLabel(name)})…`; });
+    }
+    renderStatus.textContent = "Fetching narration…";
+    await ensureSceneAudio((i,phase)=>{ renderStatus.textContent = `Scene ${i+1}/${scenes.length} — ${phase}…`; });
+    renderStatus.textContent = "";
+    for(const scene of scenes){
+      await playSceneBuffer(scene, [audioCtx.destination]);
+    }
+  }catch(err){
+    console.error(err);
+    renderStatus.textContent = "Preview failed — " + err.message;
+  }
+  previewing = false;
+  drawIdleStage();
+});
+
+/* ---- pre-render QA gate ---------------------------------------------------
+   Distinct from structuralQAReport (which checks the AI's storyboard JSON
+   right after analysis, before any audio exists). This runs immediately
+   before the expensive export step and checks the ACTUAL state of the
+   project at render time: is the cached audio really current for what's
+   about to be recorded, is there any corrupted text, does every story beat
+   have something to show, is a character used consistently. A CRITICAL
+   failure blocks the render button (matches the spec's "block final
+   rendering" requirement) until the user either fixes it or explicitly
+   overrides; a warning is shown but doesn't block. */
+async function runPreRenderQA(){
+  const checks = [];
+
+  // Audio Hash QA (critical): every scene's cached buffer must be keyed by
+  // a hash of THAT scene's current narration+voice. A mismatch here means
+  // whatever's cached does not correspond to what's about to be rendered.
+  const audioMismatches = [];
+  for(const scene of scenes){
+    const expected = await audioHashFor(scene);
+    if(scene._audioKey !== expected || !sceneAudioCache[expected]){
+      audioMismatches.push(scene.title || `scene ${(scene.id!==undefined?scene.id:'?')+1}`);
+    }
+  }
+  checks.push({
+    name: "Audio matches current narration",
+    critical: true,
+    passed: audioMismatches.length === 0,
+    details: audioMismatches.length ? `Stale or missing audio: ${audioMismatches.join(', ')}` : "Every scene's cached audio hash matches its current narration and voice."
+  });
+
+  // Technical Text QA (critical): catches encoding corruption — the Unicode
+  // replacement character, a literal "□" placeholder box, or the "â.."
+  // mojibake pattern produced by a UTF-8/Latin-1 mismatch — anywhere text
+  // will be drawn onto the canvas.
+  const BROKEN_TEXT_PATTERN = /[\uFFFD\u25A1]|â[\x80-\xBF]{1,2}/;
+  const brokenScenes = scenes.filter(s => BROKEN_TEXT_PATTERN.test(s.narration||"") || BROKEN_TEXT_PATTERN.test(JSON.stringify(s.visual||{})));
+  checks.push({
+    name: "No corrupted or placeholder characters",
+    critical: true,
+    passed: brokenScenes.length === 0,
+    details: brokenScenes.length ? `Found in: ${brokenScenes.map(s=>s.title).join(', ')}` : "No mojibake or replacement characters detected in any scene."
+  });
+
+  // Visual Event Coverage QA (warning, story_scene only): a beat with no
+  // characters, no props, and no environment event is a beat with nothing
+  // happening at all.
+  const emptyBeatScenes = scenes.filter(s => s.visual && s.visual.kind === "story_scene" &&
+    (s.visual.beats||[]).some(b => (!b.characters || b.characters.length===0) && (!b.props || b.props.length===0) && !b.environmentEvent));
+  checks.push({
+    name: "Story beats have a visible event",
+    critical: false,
+    passed: emptyBeatScenes.length === 0,
+    details: emptyBeatScenes.length ? `Empty beat(s) in: ${emptyBeatScenes.map(s=>s.title).join(', ')}` : "Every story beat has a character, a prop, or an environment event."
+  });
+
+  // Action Density QA (warning, story_scene only): a rough, mechanical stand-in
+  // for the "don't stay static while narration describes big events" rule —
+  // this can't literally measure seconds-of-stillness (the renderer doesn't
+  // do frame diffing), but a story scene with very few beats relative to how
+  // much narration it's carrying is a strong, cheap signal that some
+  // sentence is probably sitting over an unchanging shot.
+  const lowDensityScenes = scenes.filter(s=>{
+    if(!(s.visual && s.visual.kind === "story_scene")) return false;
+    const words = (s.narration||"").trim().split(/\s+/).filter(Boolean).length;
+    const beatCount = (s.visual.beats||[]).length || 1;
+    return words / beatCount > 18;
+  });
+  checks.push({
+    name: "Action density looks reasonable",
+    critical: false,
+    passed: lowDensityScenes.length === 0,
+    details: lowDensityScenes.length ? `Likely too few beats for the narration length in: ${lowDensityScenes.map(s=>s.title).join(', ')} — consider regenerating with more beats.` : "Every story scene has a reasonable number of beats for its narration length."
+  });
+
+  // Character Continuity QA (warning, story_scene only): the same
+  // character id should map to the same display name AND the same visual
+  // description everywhere — a drifting name suggests the AI silently
+  // treated the same id as a different character somewhere in the lesson,
+  // and a drifting description directly causes inconsistent generated
+  // character art (each pose is generated from that description text).
+  const idToNames = {}, idToDescriptions = {};
+  scenes.forEach(s=>{
+    if(s.visual && s.visual.kind === "story_scene"){
+      (s.visual.beats||[]).forEach(b=>{
+        (b.characters||[]).forEach(c=>{
+          if(!c.id) return;
+          idToNames[c.id] = idToNames[c.id] || new Set();
+          if(c.name) idToNames[c.id].add(c.name);
+          idToDescriptions[c.id] = idToDescriptions[c.id] || new Set();
+          if(c.description) idToDescriptions[c.id].add(c.description);
+        });
+      });
+    }
+  });
+  const driftingIds = Object.entries(idToNames).filter(([id,names])=>names.size>1).map(([id,names])=>`${id} (${[...names].join('/')})`);
+  const driftingDescriptions = Object.entries(idToDescriptions).filter(([id,descs])=>descs.size>1).map(([id])=>id);
+  const identityIssues = [...driftingIds, ...driftingDescriptions.map(id=>`${id} (description text differs across scenes)`)];
+  checks.push({
+    name: "Character identity is consistent",
+    critical: false,
+    passed: identityIssues.length === 0,
+    details: identityIssues.length ? `Inconsistent: ${identityIssues.join('; ')}` : "Every character id maps to exactly one name and one description throughout the lesson."
+  });
+
+  // Caption Timing QA (warning): captions render as the scene's whole
+  // narration string for the scene's real, audio-driven duration, so timing
+  // is correct by construction — the only way this fails is empty narration.
+  const emptyNarration = scenes.filter(s => !s.narration || !s.narration.trim());
+  checks.push({
+    name: "Captions have content to show",
+    critical: false,
+    passed: emptyNarration.length === 0,
+    details: emptyNarration.length ? `Empty narration in: ${emptyNarration.map(s=>s.title).join(', ')}` : "Every scene has narration to caption."
+  });
+
+  const criticalFailed = checks.some(c => c.critical && !c.passed);
+  return { checks, criticalFailed };
+}
+
+function renderQAPanel(report){
+  const panel = document.getElementById('qaPanel');
+  panel.style.display = 'block';
+  panel.innerHTML = report.checks.map(c=>{
+    const icon = c.passed ? '✓' : (c.critical ? '✕' : '!');
+    const color = c.passed ? 'var(--teal)' : (c.critical ? 'var(--red)' : '#f59e0b');
+    return `<div style="margin-bottom:6px;"><span style="color:${color};font-weight:700;">${icon}</span> <span style="color:var(--text);">${c.name}</span><div style="color:var(--text-dim);margin-left:16px;">${c.details}</div></div>`;
+  }).join('');
+  if(report.criticalFailed){
+    panel.innerHTML += `<div style="margin-top:8px;color:var(--red);">Critical check(s) failed — rendering is blocked. Fix the flagged scene(s) (try "↻ Regenerate this scene" on the storyboard) or re-run the checks.</div>`;
+  }
+}
+
+/* ---------------- export / render video (real audio, muxed directly — no permission dialogs) ---------------- */
+document.getElementById('renderBtn').addEventListener('click', renderVideo);
+const progressFill = document.getElementById('progressFill');
+const renderStatus = document.getElementById('renderStatus');
+const downloadLink = document.getElementById('downloadLink');
+
+async function renderVideo(){
+  if(!selectedVoiceId){ renderStatus.textContent = "Pick a voice first."; return; }
+  progressFill.style.width='0%';
+  downloadLink.style.display='none';
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  try{
+    if(useAICharacterArt){
+      renderStatus.textContent = "Generating character art…";
+      await ensureCharacterImages((i,total,name)=>{
+        progressFill.style.width = `${Math.round(((i)/total)*15)}%`;
+        renderStatus.textContent = `Generating character art ${i+1}/${total} (${humanizeLabel(name)})…`;
+      });
+    }
+    renderStatus.textContent = "Fetching narration for every scene…";
+    await ensureSceneAudio((i)=>{
+      const base = useAICharacterArt ? 15 : 0;
+      progressFill.style.width = `${base + Math.round(((i)/scenes.length)*(40-base))}%`;
+      renderStatus.textContent = `Fetching narration ${i+1}/${scenes.length}…`;
+    });
+  }catch(err){
+    console.error(err);
+    renderStatus.textContent = "Couldn't fetch narration audio — " + err.message;
+    return;
+  }
+
+  renderStatus.textContent = "Running pre-render checks…";
+  const qaReport = await runPreRenderQA();
+  renderQAPanel(qaReport);
+  if(qaReport.criticalFailed){
+    renderStatus.textContent = "Render blocked — a critical check failed. See the report above.";
+    return;
+  }
+
+  document.getElementById('recDot').classList.add('live');
+  document.getElementById('recLabel').textContent = 'REC';
+
+  const audioDest = audioCtx.createMediaStreamDestination();
+  const canvasStream = stageCanvas.captureStream(30);
+  const combined = new MediaStream();
+  canvasStream.getVideoTracks().forEach(t=>combined.addTrack(t));
+  audioDest.stream.getAudioTracks().forEach(t=>combined.addTrack(t));
+
+  const chunks = [];
+  const recorder = new MediaRecorder(combined, {mimeType:'video/webm;codecs=vp9,opus'});
+  recorder.ondataavailable = e=>{ if(e.data.size>0) chunks.push(e.data); };
+  const finished = new Promise(res=>{ recorder.onstop = res; });
+  recorder.start();
+
+  for(let i=0;i<scenes.length;i++){
+    renderStatus.textContent = `Rendering scene ${i+1} of ${scenes.length}…`;
+    await playSceneBuffer(scenes[i], [audioDest]); // routed only into the recording, not your speakers
+    progressFill.style.width = `${40 + Math.round(((i+1)/scenes.length)*60)}%`;
+  }
+
+  recorder.stop();
+  await finished;
+
+  const blob = new Blob(chunks, {type:'video/webm'});
+  const url = URL.createObjectURL(blob);
+  downloadLink.href = url;
+  downloadLink.download = 'explainer-video.webm';
+  downloadLink.style.display = 'block';
+  document.getElementById('recDot').classList.remove('live');
+  document.getElementById('recLabel').textContent = 'PREVIEW';
+  renderStatus.textContent = `Done — ${(blob.size/1024/1024).toFixed(1)} MB, audio included.`;
+  drawIdleStage();
+}
+</script>
+</body>
+</html>
